@@ -4,18 +4,22 @@ output: html_document
 date: "2024-11-16"
 ---
 
+```{r}
+install.packages("glmnet")
+```
+
 ## Read Data
 
 ```{r}
 library(readr)
 
 # Define the path to the CSV file in the "arxiv" folder
-file_path <- file.path("archive", "df_train.csv")  # Replace 'your_file.csv' with the actual file name
+file_path <- file.path("data", "df_train.csv")  # Replace 'your_file.csv' with the actual file name
 
 # Read the CSV file
 data_train <- read_csv(file_path)
 
-file_path2 <- file.path("archive", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
+file_path2 <- file.path("data", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
 
 # Read the CSV file
 data_test <- read_csv(file_path2)
@@ -27,9 +31,11 @@ print(data_train)
 ## Preprocessing
 
 ```{r}
-
-
 library(dplyr)
+
+# dplyr::filter()  # For the 'filter' function in dplyr
+# stats::filter()  # For the 'filter' function in stats
+# base::union()    # For the 'union' function in base R
 
 # Convert specific columns to factors with labels "0" and "1"
 dataset_train <- data_train %>%
@@ -55,12 +61,9 @@ dataset_test <- dataset_test %>%
 
 dataset_train <- dataset_train %>%
   mutate(date = as.numeric(date)) 
-
 ```
 
 ```{r}
-
-library(dplyr)
 
 # Replace non-numeric columns in-place
 dataset_train <- dataset_train %>%
@@ -93,8 +96,8 @@ cor_matrix <- cor(dataset_train)
 ggcorrplot(
   cor_matrix,
   lab = TRUE,               # Show correlation coefficients
-  lab_size = 3,             # Smaller label size for numbers in the cells
-  tl.cex = 5,              # Smaller text label size for axis labels
+  lab_size = 2,             # Larger label size for numbers in the cells
+  tl.cex = 8,              # Larger text label size for axis labels
   colors = c("red", "white", "blue"), # Custom color palette
   title = "Correlation Matrix"
 )
@@ -268,15 +271,314 @@ ggplot(dataset_train, aes(x = quartile_zone, y = price, fill = as.factor(quartil
   )
 ```
 
-## MLR Model
 ```{r}
+library(MASS)
+library(glmnet)
+
+model <- lm(price ~ ., data = dataset_train)
+step <- stepAIC(model, direction = "both")
+# summary(step)
+print("-------------------------------------------------")
+
+x <- model.matrix(price ~ ., dataset_train)[,-1]
+y <- dataset_train$price
+lasso_model <- cv.glmnet(x, y, alpha = 1) # Lasso
+ridge_model <- cv.glmnet(x, y, alpha = 0) # Ridge
+
+lasso_model
+print("-------------------------------------------------")
+ridge_model
+print("-------------------------------------------------")
+
+
+```
+
+```{r}
+# Load required library
+library(glmnet)
+
+# Assuming `dataset` is your data frame
+# Extract the predictor matrix (X) and response variable (y)
+X <- model.matrix(price ~ ., dataset_train)[, -1]  # Exclude the intercept
+y <- dataset_train$price
+
+# Ridge Regression (alpha = 0)
+set.seed(123)  # For reproducibility
+ridge_model <- cv.glmnet(X, y, alpha = 0)  # Cross-validation for Ridge
+ridge_best_lambda <- ridge_model$lambda.min  # Best lambda for Ridge
+
+# Extract coefficients for the best lambda in Ridge
+ridge_coefficients <- as.matrix(coef(ridge_model, s = ridge_best_lambda))  # Convert to matrix
+ridge_scores <- abs(ridge_coefficients[, 1])  # Absolute values of coefficients
+ridge_ranked_features <- data.frame(Feature = rownames(ridge_coefficients), Score = ridge_scores)
+
+# Lasso Regression (alpha = 1)
+set.seed(123)  # For reproducibility
+lasso_model <- cv.glmnet(X, y, alpha = 1)  # Cross-validation for Lasso
+lasso_best_lambda <- lasso_model$lambda.min  # Best lambda for Lasso
+
+# Extract coefficients for the best lambda in Lasso
+lasso_coefficients <- as.matrix(coef(lasso_model, s = lasso_best_lambda))  # Convert to matrix
+lasso_scores <- abs(lasso_coefficients[, 1])  # Absolute values of coefficients
+lasso_ranked_features <- data.frame(Feature = rownames(lasso_coefficients), Score = lasso_scores)
+
+# Remove intercept from rankings
+ridge_ranked_features <- ridge_ranked_features[ridge_ranked_features$Feature != "(Intercept)", ]
+lasso_ranked_features <- lasso_ranked_features[lasso_ranked_features$Feature != "(Intercept)", ]
+
+# Sort features by score in descending order
+ridge_ranked_features <- ridge_ranked_features[order(-ridge_ranked_features$Score), ]
+lasso_ranked_features <- lasso_ranked_features[order(-lasso_ranked_features$Score), ]
+
+# Select top 50% of features
+ridge_top_features <- ridge_ranked_features[1:floor(nrow(ridge_ranked_features) / 2), ]
+lasso_top_features <- lasso_ranked_features[1:floor(nrow(lasso_ranked_features) / 2), ]
+
+# Print Results
+print("Top 50% Features by Ridge Regression:\n")
+print(ridge_top_features)
+
+print("\nTop 50% Features by Lasso Regression:\n")
+print(lasso_top_features)
+```
+
+```{r}
+# Greedy algorithm for feature selection based on adjusted R-squared
+greedy_feature_selection <- function(data, target_var) {
+  # Initialize variables
+  features <- setdiff(names(data), target_var)  # All features except target
+  selected_features <- c()  # Empty set of selected features
+  adj_r_squared_list <- c()  # Store adjusted R-squared at each step
+  feature_order <- c()  # Store the order in which features are added
+  
+  # Iterate until all features are considered
+  while (length(features) > 0) {
+    best_adj_r_squared <- -Inf
+    best_feature <- NULL
+    
+    # Try adding each feature not in selected_features
+    for (feature in features) {
+      current_features <- c(selected_features, feature)
+      formula <- as.formula(paste(target_var, "~", paste(current_features, collapse = " + ")))
+      model <- lm(formula, data = data)
+      adj_r_squared <- summary(model)$adj.r.squared
+      
+      # Update best feature if adjusted R-squared improves
+      if (adj_r_squared > best_adj_r_squared) {
+        best_adj_r_squared <- adj_r_squared
+        best_feature <- feature
+      }
+    }
+    
+    # Update selected features and remaining features
+    selected_features <- c(selected_features, best_feature)
+    features <- setdiff(features, best_feature)
+    
+    # Store results
+    adj_r_squared_list <- c(adj_r_squared_list, best_adj_r_squared)
+    feature_order <- c(feature_order, best_feature)
+  }
+  
+  # Combine results into a data frame
+  result <- data.frame(
+    Step = 1:length(feature_order),
+    Feature_Added = feature_order,
+    Adjusted_R_Squared = adj_r_squared_list
+  )
+  
+  return(result)
+}
+
+# Apply the greedy feature selection function
+# Replace 'dataset' with your actual dataset and 'price' with your target variable
+result <- greedy_feature_selection(data = dataset_train, target_var = "price")
+
+# Display the results
+print(result)
+```
+```{r}
+# Greedy algorithm for feature selection considering original and squared versions
+greedy_feature_selection_all <- function(data, target_var) {
+  # Initialize variables
+  features <- setdiff(names(data), target_var)  # All features except the target
+  selected_features <- c()  # Empty set of selected features
+  adj_r_squared_list <- c()  # Store adjusted R-squared at each step
+  feature_order <- c()  # Store the order in which features are added
+  
+  # Add squared versions of features to the dataset
+  for (feature in features) {
+    data[[paste0(feature, "_squared")]] <- data[[feature]]^2
+  }
+  all_features <- c(features, paste0(features, "_squared"))  # Original + squared versions
+  
+  # Greedy selection process
+  while (length(all_features) > 0) {
+    best_adj_r_squared <- -Inf
+    best_feature <- NULL
+    
+    # Try adding each feature not yet in the selected set
+    for (feature in all_features) {
+      current_features <- c(selected_features, feature)
+      formula <- as.formula(paste(target_var, "~", paste(current_features, collapse = " + ")))
+      model <- lm(formula, data = data)
+      adj_r_squared <- summary(model)$adj.r.squared
+      
+      # Update the best feature if adjusted R-squared improves
+      if (adj_r_squared > best_adj_r_squared) {
+        best_adj_r_squared <- adj_r_squared
+        best_feature <- feature
+      }
+    }
+    
+    # Update selected features and remaining features
+    selected_features <- c(selected_features, best_feature)
+    all_features <- setdiff(all_features, best_feature)  # Remove selected feature
+    
+    # Store results
+    adj_r_squared_list <- c(adj_r_squared_list, best_adj_r_squared)
+    feature_order <- c(feature_order, best_feature)
+  }
+  
+  # Combine results into a data frame
+  result <- data.frame(
+    Step = 1:length(feature_order),
+    Feature_Added = feature_order,
+    Adjusted_R_Squared = adj_r_squared_list
+  )
+  
+  return(result)
+}
+
+# Apply the greedy feature selection function
+# Replace 'dataset' with your actual dataset and 'price' with your target variable
+result <- greedy_feature_selection_all(data = dataset_train, target_var = "price")
+
+# Display the results
+print(result)
+
+```
+```{r}
+# Greedy algorithm for interaction term selection
+greedy_feature_selection_interactions <- function(data, target_var, current_features) {
+  # Initialize variables
+  features <- current_features  # Features already selected
+  interaction_terms <- combn(features, 2, simplify = FALSE)  # All pairs of features
+  adj_r_squared_list <- c()  # Store adjusted R-squared at each step
+  interaction_order <- c()  # Store the order in which interaction terms are added
+  
+  # Greedy selection process for interaction terms
+  while (length(interaction_terms) > 0) {
+    best_adj_r_squared <- -Inf
+    best_interaction <- NULL
+    
+    # Try adding each interaction term
+    for (interaction in interaction_terms) {
+      # Create interaction term
+      interaction_name <- paste0(interaction[1], "_x_", interaction[2])
+      data[[interaction_name]] <- data[[interaction[1]]] * data[[interaction[2]]]
+      
+      # Fit the model with the new interaction term
+      formula <- as.formula(paste(
+        target_var, "~", paste(features, collapse = " + "), "+", interaction_name
+      ))
+      model <- lm(formula, data = data)
+      adj_r_squared <- summary(model)$adj.r.squared
+      
+      # Update the best interaction if adjusted R-squared improves
+      if (adj_r_squared > best_adj_r_squared) {
+        best_adj_r_squared <- adj_r_squared
+        best_interaction <- interaction
+      }
+    }
+    
+    # Update selected interactions and remove from the pool
+    if (!is.null(best_interaction)) {
+      interaction_name <- paste0(best_interaction[1], "_x_", best_interaction[2])
+      features <- c(features, interaction_name)
+      interaction_order <- c(interaction_order, interaction_name)
+      adj_r_squared_list <- c(adj_r_squared_list, best_adj_r_squared)
+      
+      # Remove the selected interaction from the pool
+      interaction_terms <- interaction_terms[!sapply(interaction_terms, function(x) all(x %in% best_interaction))]
+    } else {
+      break  # Stop if no improvement
+    }
+  }
+  
+  # Combine results into a data frame
+  result <- data.frame(
+    Step = 1:length(interaction_order),
+    Interaction_Added = interaction_order,
+    Adjusted_R_Squared = adj_r_squared_list
+  )
+  
+  return(result)
+}
+
+# Example Usage
+# Assuming 'dataset' is your data frame and 'price' is the target variable
+# Assuming `current_features` is a list of features already selected in the current model
+current_features <- c("nice_view", "quartile_zone", "perfect_condition", "renovated", "grade", "has_basement")
+result <- greedy_feature_selection_interactions(data = dataset_train, target_var = "price", current_features = current_features)
+
+# Display the results
+print(result)
+```
+```{r}
+# Define the selected features
+selected_original_features <- c("nice_view", "quartile_zone", "perfect_condition", "renovated", "grade", "has_basement")
+
+# Define the selected squared features
+selected_squared_features <- c("living_in_m2_squared", "perfect_condition_squared")
+
+# Define the selected interaction terms
+selected_interaction_terms <- c("grade_x_nice_view", "grade_x_quartile_zone", "renovated_x_grade", "perfect_condition_x_grade")
+
+# Add interaction terms to the dataset
+for (interaction in selected_interaction_terms) {
+  features <- unlist(strsplit(interaction, "_x_"))
+  dataset_train[[interaction]] <- dataset_train[[features[1]]] * dataset_train[[features[2]]]
+}
+
+# Add squared terms to the dataset
+for (squared_feature in selected_squared_features) {
+  original_feature <- gsub("_squared", "", squared_feature)
+  dataset_train[[squared_feature]] <- dataset_train[[original_feature]]^2
+}
+
+# Combine all selected features
+all_selected_features <- c(selected_original_features, selected_squared_features, selected_interaction_terms)
+
+# Create the formula for the final regression model
+final_formula <- as.formula(paste("price ~", paste(all_selected_features, collapse = " + ")))
+
 # Fit the Multiple Linear Regression model
-mlr_model <- lm(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+final_model <- lm(final_formula, data = dataset_train)
+
+# Display the model summary
+summary(final_model)
+```
+## MLR Model
+### Lasso, Ridge, and All features MLR models
+
+```{r}
+mlr_model_all <- lm(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
                   perfect_condition + real_bathrooms + has_lavatory + single_floor +
                   month + quartile_zone, data = dataset_train)
 
-# Display the model summary
-summary(mlr_model)
+mlr_model_ridge <- lm(price ~ nice_view + quartile_zone + perfect_condition + renovated + grade + has_basement, data = dataset_train)
+
+mlr_model_lasso <- lm(price ~ nice_view + quartile_zone + perfect_condition + renovated + grade + has_lavatory, data = dataset_train)
+
+summary(mlr_model_all)
+print("-------------------------------------------------------------")
+summary(mlr_model_ridge)
+print("-------------------------------------------------------------")
+summary(mlr_model_lasso)
+
+```
+
+```{r}
 
 ```
 ### Model Summary
