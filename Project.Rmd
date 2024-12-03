@@ -4,9 +4,6 @@ output: html_document
 date: "2024-11-16"
 ---
 
-```{r}
-install.packages("glmnet")
-```
 
 ## Read Data
 
@@ -599,13 +596,13 @@ summary(mlr_model_lasso)
 ```{r}
 
 # Residuals vs Fitted Plot
-plot(mlr_model, which = 1, main = "Residuals vs Fitted")
+plot(mlr_model_all, which = 1, main = "Residuals vs Fitted")
 
 # Normal Q-Q Plot
-plot(mlr_model, which = 2, main = "Normal Q-Q")
+plot(mlr_model_all, which = 2, main = "Normal Q-Q")
 
 # Histogram of Residuals
-hist(residuals(mlr_model), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+hist(residuals(mlr_model_all), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
 
 ```
 There is a slight curve in the Residuals vs Fitted Plot suggeesting that the model is missing some non-linear relationships.
