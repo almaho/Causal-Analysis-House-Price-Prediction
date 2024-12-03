@@ -1,0 +1,426 @@
+---
+title: "Project"
+output: html_document
+date: "2024-11-16"
+---
+
+## Read Data
+
+```{r}
+library(readr)
+
+# Define the path to the CSV file in the "arxiv" folder
+file_path <- file.path("archive", "df_train.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_train <- read_csv(file_path)
+
+file_path2 <- file.path("archive", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_test <- read_csv(file_path2)
+
+# Display the first few rows of the data
+print(data_train)
+```
+
+## Preprocessing
+
+```{r}
+
+
+library(dplyr)
+
+# Convert specific columns to factors with labels "0" and "1"
+dataset_train <- data_train %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+
+dataset_test <- data_test %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+if (!requireNamespace("lubridate", quietly = TRUE)) {
+  install.packages("lubridate")
+}
+library(lubridate)
+
+
+
+dataset_test <- dataset_test %>%
+  mutate(date = as.numeric(date))  # Converts 'date' column to numeric (days since 1970-01-01)
+
+dataset_train <- dataset_train %>%
+  mutate(date = as.numeric(date)) 
+
+```
+
+```{r}
+
+library(dplyr)
+
+# Replace non-numeric columns in-place
+dataset_train <- dataset_train %>%
+  mutate(across(everything(), ~ as.numeric(as.character(.))))
+
+# Check for remaining non-numeric columns
+non_numeric_cols <- sapply(dataset_train, function(col) !is.numeric(col))
+if (any(non_numeric_cols)) {
+  print("Non-numeric columns remain:")
+  print(names(dataset_train)[non_numeric_cols])
+} else {
+  print("All columns are now numeric.")
+}
+
+print(dataset_train)
+```
+
+```{r}
+# Install and load ggcorrplot
+if (!requireNamespace("ggcorrplot", quietly = TRUE)) {
+  install.packages("ggcorrplot")
+}
+library(ggcorrplot)
+
+# Assuming your dataset is named `dataset_train`
+# Calculate the correlation matrix (only numeric columns)
+cor_matrix <- cor(dataset_train)
+
+# Plot the correlation matrix with adjusted sizes
+ggcorrplot(
+  cor_matrix,
+  lab = TRUE,               # Show correlation coefficients
+  lab_size = 3,             # Smaller label size for numbers in the cells
+  tl.cex = 5,              # Smaller text label size for axis labels
+  colors = c("red", "white", "blue"), # Custom color palette
+  title = "Correlation Matrix"
+)
+
+
+```
+
+```{r}
+ggplot(dataset_train, aes(x = grade, y = living_in_m2, fill = as.factor(grade))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "Living Space by grade",
+    x = "grade",
+    y = "living_space",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+
+```
+
+```{r}
+library(ggplot2)
+#install.packages("viridis")
+
+library(viridis)
+
+ggplot(dataset_train, aes(x = bedrooms, y = living_in_m2, fill = as.factor(bedrooms))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "Living Space by Number of Bedrooms",
+    x = "Number of Bedrooms",
+    y = "Living Space (m²)",
+    fill = "Bedrooms"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = grade, y = bedrooms, fill = as.factor(grade))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "bedrooms by grade",
+    x = "grade",
+    y = "bedrooms",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = grade, y = price, fill = as.factor(grade))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by grade",
+    x = "grade",
+    y = "price",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = bedrooms, y = price, fill = as.factor(bedrooms))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by bedrooms",
+    x = "bedroooms",
+    y = "price",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = real_bathrooms, y = price, fill = as.factor(real_bathrooms))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by bathrooms",
+    x = "bathroom",
+    y = "price",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = nice_view, y = price, fill = as.factor(nice_view))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by nice view",
+    x = "nice view",
+    y = "price",
+    fill = "nice view"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = quartile_zone, y = price, fill = as.factor(quartile_zone))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by zone",
+    x = "zone",
+    y = "price",
+    fill = "zone"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+## MLR Model
+```{r}
+# Fit the Multiple Linear Regression model
+mlr_model <- lm(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+                  perfect_condition + real_bathrooms + has_lavatory + single_floor +
+                  month + quartile_zone, data = dataset_train)
+
+# Display the model summary
+summary(mlr_model)
+
+```
+### Model Summary
+
+
+### Interpretations:
+- **Significant Predictors**: All predictors have p-values < 0.05, indicating statistical significance.
+- **Strongest Predictors**:
+  - `living_in_m2`: A critical driver of house prices.
+  - `grade`: Higher grades significantly increase house prices.
+  - `quartile_zone`: Highlights the importance of location.
+
+
+- **Residual Standard Error**: \( 0.01665 \), indicating a good fit.
+- **Multiple R-squared**: \( 0.7628 \), meaning approximately 76% of the variance in log(price) is explained by the model.
+- **Adjusted R-squared**: \( 0.7625 \), accounting for the number of predictors.
+- **F-statistic**: \( 3121 \), p-value < \( 2.2e^{-16} \), confirming overall model significance.
+```{r}
+
+# Residuals vs Fitted Plot
+plot(mlr_model, which = 1, main = "Residuals vs Fitted")
+
+# Normal Q-Q Plot
+plot(mlr_model, which = 2, main = "Normal Q-Q")
+
+# Histogram of Residuals
+hist(residuals(mlr_model), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+
+```
+There is a slight curve in the Residuals vs Fitted Plot suggeesting that the model is missing some non-linear relationships.
+
+Deviations at the Ends in the QQ plot suggests suggest skewness or heavy tails in the residuals.
+
+## Instrumental Variables (IV) 
+
+### First Stage
+```{r}
+# Ensure renovated is numeric
+dataset_train$renovated <- as.numeric(as.character(dataset_train$renovated))
+
+# First Stage Regression
+first_stage_model <- lm(renovated ~ grade + quartile_zone, data = dataset_train)
+
+# Display summary of the first stage regression
+summary(first_stage_model)
+```
+#### Interpretation
+- The **Intercept** is significant, indicating that when all predictors are zero, the baseline value of `renovated` is approximately 0.0473.
+- The variable `grade` has a negative and significant effect on `renovated`, with a small but statistically significant estimate (-0.0082, p < 0.001).
+- The instrument `quartile_zone` shows mixed results:
+  - **quartile_zone3** and **quartile_zone4** have significant positive coefficients (p < 0.001), indicating that properties in these zones are more likely to be renovated.
+  - **quartile_zone2**, however, is not significant (p = 0.288).
+
+- **Residual Standard Error (RSE)**: 0.193  
+  The residuals indicate that the model captures only a small amount of variation in `renovated`.
+  
+- **Multiple R-squared**: 0.003466  
+  This value indicates that only ~0.35% of the variation in `renovated` is explained by `grade` and `quartile_zone`. While low, this is not uncommon in first-stage regressions for binary variables.
+
+- **Adjusted R-squared**: 0.003172  
+  Adjusted for the number of predictors, the R-squared value remains very low.
+
+- **F-statistic**: 11.82 (p < 0.001)  
+  The F-statistic confirms that the model is statistically significant overall, suggesting that the predictors, collectively, have some explanatory power.
+
+The first-stage regression results demonstrate partial **relevance** for the instrument `quartile_zone`. While `quartile_zone3` and `quartile_zone4` are significant predictors of `renovated`, `quartile_zone2` is not. The F-statistic exceeds the threshold of 10, supporting the instrument's overall strength in explaining `renovated`.
+### Second Stage
+```{r}
+# Add predicted values of renovated from the first stage
+dataset_train$hat_R <- predict(first_stage_model)
+
+# Second Stage Regression
+second_stage_model <- lm(price ~ bedrooms + grade + hat_R + nice_view +
+                           living_in_m2 + perfect_condition + quartile_zone, 
+                         data = dataset_train)
+
+# Display summary of the second stage regression
+summary(second_stage_model)
+```
+####  Interpretation
+- **Residual Standard Error (RSE)**: 0.01687  
+  This indicates a close fit of the model to the data, with small residuals overall.
+  
+- **Multiple R-squared**: 0.7565  
+  Approximately 75.65% of the variation in house prices is explained by the predictors in the model.
+  
+- **Adjusted R-squared**: 0.7564  
+  This value accounts for the number of predictors in the model, confirming a strong fit even when adjusted for complexity.
+  
+- **F-statistic**: 5279 (p < 2.2e-16)  
+  The F-statistic is highly significant, suggesting that the model explains a substantial portion of the variation in house prices.
+
+The second-stage regression demonstrates that the instrumented variable `hat_R` (renovation status) has a strong positive effect on house prices, supporting the hypothesis that renovations increase property value. All other variables are statistically significant, and the model explains a large portion of the variance in house prices. The results suggest that the instrumented renovations are indeed a key determinant of house prices, and the IV method provides a reliable estimate of their causal effect.
+```{r}
+plot(second_stage_model, which = 1, main = "Residuals vs Fitted")
+plot(second_stage_model, which = 2, main = "Normal Q-Q")
+hist(residuals(second_stage_model), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+
+```
+Both the residuals vs. fitted plot and the Q-Q plot suggest that the model might benefit from further refinement. The curvature in the residuals suggests possible non-linear relationships, while the non-normality of the residuals indicates the need for additional steps to improve the model fit and the validity of the estimates.
+
+## Fixed-Effects Model
+
+```{r}
+# Fit the Fixed-effects Model
+fixed_effects_model <- lm(price ~ bedrooms + living_in_m2 + nice_view + perfect_condition + quartile_zone, data = dataset_train)
+
+# Display summary of the fixed-effects model
+summary(fixed_effects_model)
+```
+### Interpretation
+The fixed-effects model was estimated to account for unobserved location-specific factors that may influence house prices. The results are as follows:
+
+- **Intercept**: The baseline house price is estimated at \$2.487, which is highly significant.
+- **Bedrooms**: The number of bedrooms has a negligible and statistically insignificant effect on house prices (p-value = 0.988).
+- **Living Area**: Each additional square meter of living area increases the house price by 0.0245%, and this effect is highly significant (p-value < 2e-16).
+- **Nice View**: Having a nice view increases house prices by 1.57%, which is highly significant (p-value < 2e-16).
+- **Perfect Condition**: Properties in perfect condition increase in price by approximately 0.68%, with a highly significant p-value (p-value < 2e-16).
+- **Quartile Zones**: The coefficients for quartile zones indicate significant location-based effects:
+  - Quartile Zone 2: +2.39% higher price.
+  - Quartile Zone 3: +4.71% higher price.
+  - Quartile Zone 4: +5.49% higher price.
+  
+Overall, the fixed-effects model provides strong evidence that property features such as living area, view, and condition, along with the neighborhood zone, are significant determinants of house prices.
+
+The model has a residual standard error of 0.01751 and explains approximately 73.75% of the variance in house prices (R-squared = 0.7375). The F-statistic is 5458, confirming that the model is statistically significant.
+
+
+## Sensivity Analysis for each Model
+
+```{r}
+# 1. Add interaction term (e.g., living area and number of bedrooms)
+mlr_interaction_model <- lm(price ~ bedrooms * living_in_m2 + nice_view + perfect_condition + quartile_zone, data = dataset_train)
+summary(mlr_interaction_model)
+
+# 2. Log transformation of the dependent variable (price)
+mlr_log_model <- lm(log(price) ~ bedrooms + living_in_m2 + nice_view + perfect_condition + quartile_zone, data = dataset_train)
+summary(mlr_log_model)
+
+# 3. Exclude control variable (e.g., remove `nice_view` variable)
+mlr_reduced_model <- lm(price ~ bedrooms + living_in_m2 + perfect_condition + quartile_zone, data = dataset_train)
+summary(mlr_reduced_model)
+```
+
+
+
+
