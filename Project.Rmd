@@ -4,7 +4,6 @@ output: html_document
 date: "2024-11-16"
 ---
 
-
 ## Read Data
 
 ```{r}
@@ -15,7 +14,6 @@ file_path <- file.path("data", "df_train.csv")  # Replace 'your_file.csv' with t
 
 # Read the CSV file
 data_train <- read_csv(file_path)
-
 file_path2 <- file.path("data", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
 
 # Read the CSV file
@@ -30,9 +28,9 @@ print(data_train)
 ```{r}
 library(dplyr)
 
-# dplyr::filter()  # For the 'filter' function in dplyr
-# stats::filter()  # For the 'filter' function in stats
-# base::union()    # For the 'union' function in base R
+#dplyr::filter()  # For the 'filter' function in dplyr
+#stats::filter()  # For the 'filter' function in stats
+#base::union()    # For the 'union' function in base R
 
 # Convert specific columns to factors with labels "0" and "1"
 dataset_train <- data_train %>%
@@ -393,6 +391,7 @@ result <- greedy_feature_selection(data = dataset_train, target_var = "price")
 # Display the results
 print(result)
 ```
+
 ```{r}
 # Greedy algorithm for feature selection considering original and squared versions
 greedy_feature_selection_all <- function(data, target_var) {
@@ -454,6 +453,7 @@ result <- greedy_feature_selection_all(data = dataset_train, target_var = "price
 print(result)
 
 ```
+
 ```{r}
 # Greedy algorithm for interaction term selection
 greedy_feature_selection_interactions <- function(data, target_var, current_features) {
@@ -521,6 +521,7 @@ result <- greedy_feature_selection_interactions(data = dataset_train, target_var
 # Display the results
 print(result)
 ```
+
 ```{r}
 # Define the selected features
 selected_original_features <- c("nice_view", "quartile_zone", "perfect_condition", "renovated", "grade", "has_basement")
@@ -555,7 +556,9 @@ final_model <- lm(final_formula, data = dataset_train)
 # Display the model summary
 summary(final_model)
 ```
+
 ## MLR Model
+
 ### Lasso, Ridge, and All features MLR models
 
 ```{r}
@@ -578,21 +581,21 @@ summary(mlr_model_lasso)
 ```{r}
 
 ```
+
 ### Model Summary
 
-
 ### Interpretations:
-- **Significant Predictors**: All predictors have p-values < 0.05, indicating statistical significance.
-- **Strongest Predictors**:
-  - `living_in_m2`: A critical driver of house prices.
-  - `grade`: Higher grades significantly increase house prices.
-  - `quartile_zone`: Highlights the importance of location.
 
+-   **Significant Predictors**: All predictors have p-values \< 0.05, indicating statistical significance.
+-   **Strongest Predictors**:
+    -   `living_in_m2`: A critical driver of house prices.
+    -   `grade`: Higher grades significantly increase house prices.
+    -   `quartile_zone`: Highlights the importance of location.
+-   **Residual Standard Error**: $0.01665$, indicating a good fit.
+-   **Multiple R-squared**: $0.7628$, meaning approximately 76% of the variance in log(price) is explained by the model.
+-   **Adjusted R-squared**: $0.7625$, accounting for the number of predictors.
+-   **F-statistic**: $3121$, p-value \< $2.2e^{-16}$, confirming overall model significance.
 
-- **Residual Standard Error**: \( 0.01665 \), indicating a good fit.
-- **Multiple R-squared**: \( 0.7628 \), meaning approximately 76% of the variance in log(price) is explained by the model.
-- **Adjusted R-squared**: \( 0.7625 \), accounting for the number of predictors.
-- **F-statistic**: \( 3121 \), p-value < \( 2.2e^{-16} \), confirming overall model significance.
 ```{r}
 
 # Residuals vs Fitted Plot
@@ -605,13 +608,15 @@ plot(mlr_model_all, which = 2, main = "Normal Q-Q")
 hist(residuals(mlr_model_all), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
 
 ```
+
 There is a slight curve in the Residuals vs Fitted Plot suggeesting that the model is missing some non-linear relationships.
 
 Deviations at the Ends in the QQ plot suggests suggest skewness or heavy tails in the residuals.
 
-## Instrumental Variables (IV) 
+## Instrumental Variables (IV)
 
 ### First Stage
+
 ```{r}
 # Ensure renovated is numeric
 dataset_train$renovated <- as.numeric(as.character(dataset_train$renovated))
@@ -622,27 +627,32 @@ first_stage_model <- lm(renovated ~ grade + quartile_zone, data = dataset_train)
 # Display summary of the first stage regression
 summary(first_stage_model)
 ```
+
 #### Interpretation
-- The **Intercept** is significant, indicating that when all predictors are zero, the baseline value of `renovated` is approximately 0.0473.
-- The variable `grade` has a negative and significant effect on `renovated`, with a small but statistically significant estimate (-0.0082, p < 0.001).
-- The instrument `quartile_zone` shows mixed results:
-  - **quartile_zone3** and **quartile_zone4** have significant positive coefficients (p < 0.001), indicating that properties in these zones are more likely to be renovated.
-  - **quartile_zone2**, however, is not significant (p = 0.288).
 
-- **Residual Standard Error (RSE)**: 0.193  
-  The residuals indicate that the model captures only a small amount of variation in `renovated`.
-  
-- **Multiple R-squared**: 0.003466  
-  This value indicates that only ~0.35% of the variation in `renovated` is explained by `grade` and `quartile_zone`. While low, this is not uncommon in first-stage regressions for binary variables.
+-   The **Intercept** is significant, indicating that when all predictors are zero, the baseline value of `renovated` is approximately 0.0473.
 
-- **Adjusted R-squared**: 0.003172  
-  Adjusted for the number of predictors, the R-squared value remains very low.
+-   The variable `grade` has a negative and significant effect on `renovated`, with a small but statistically significant estimate (-0.0082, p \< 0.001).
 
-- **F-statistic**: 11.82 (p < 0.001)  
-  The F-statistic confirms that the model is statistically significant overall, suggesting that the predictors, collectively, have some explanatory power.
+-   The instrument `quartile_zone` shows mixed results:
 
-The first-stage regression results demonstrate partial **relevance** for the instrument `quartile_zone`. While `quartile_zone3` and `quartile_zone4` are significant predictors of `renovated`, `quartile_zone2` is not. The F-statistic exceeds the threshold of 10, supporting the instrument's overall strength in explaining `renovated`.
-### Second Stage
+    -   **quartile_zone3** and **quartile_zone4** have significant positive coefficients (p \< 0.001), indicating that properties in these zones are more likely to be renovated.
+    -   **quartile_zone2**, however, is not significant (p = 0.288).
+
+-   **Residual Standard Error (RSE)**: 0.193\
+    The residuals indicate that the model captures only a small amount of variation in `renovated`.
+
+-   **Multiple R-squared**: 0.003466\
+    This value indicates that only \~0.35% of the variation in `renovated` is explained by `grade` and `quartile_zone`. While low, this is not uncommon in first-stage regressions for binary variables.
+
+-   **Adjusted R-squared**: 0.003172\
+    Adjusted for the number of predictors, the R-squared value remains very low.
+
+-   **F-statistic**: 11.82 (p \< 0.001)\
+    The F-statistic confirms that the model is statistically significant overall, suggesting that the predictors, collectively, have some explanatory power.
+
+The first-stage regression results demonstrate partial **relevance** for the instrument `quartile_zone`. While `quartile_zone3` and `quartile_zone4` are significant predictors of `renovated`, `quartile_zone2` is not. The F-statistic exceeds the threshold of 10, supporting the instrument's overall strength in explaining `renovated`. \### Second Stage
+
 ```{r}
 # Add predicted values of renovated from the first stage
 dataset_train$hat_R <- predict(first_stage_model)
@@ -655,26 +665,30 @@ second_stage_model <- lm(price ~ bedrooms + grade + hat_R + nice_view +
 # Display summary of the second stage regression
 summary(second_stage_model)
 ```
-####  Interpretation
-- **Residual Standard Error (RSE)**: 0.01687  
-  This indicates a close fit of the model to the data, with small residuals overall.
-  
-- **Multiple R-squared**: 0.7565  
-  Approximately 75.65% of the variation in house prices is explained by the predictors in the model.
-  
-- **Adjusted R-squared**: 0.7564  
-  This value accounts for the number of predictors in the model, confirming a strong fit even when adjusted for complexity.
-  
-- **F-statistic**: 5279 (p < 2.2e-16)  
-  The F-statistic is highly significant, suggesting that the model explains a substantial portion of the variation in house prices.
+
+#### Interpretation
+
+-   **Residual Standard Error (RSE)**: 0.01687\
+    This indicates a close fit of the model to the data, with small residuals overall.
+
+-   **Multiple R-squared**: 0.7565\
+    Approximately 75.65% of the variation in house prices is explained by the predictors in the model.
+
+-   **Adjusted R-squared**: 0.7564\
+    This value accounts for the number of predictors in the model, confirming a strong fit even when adjusted for complexity.
+
+-   **F-statistic**: 5279 (p \< 2.2e-16)\
+    The F-statistic is highly significant, suggesting that the model explains a substantial portion of the variation in house prices.
 
 The second-stage regression demonstrates that the instrumented variable `hat_R` (renovation status) has a strong positive effect on house prices, supporting the hypothesis that renovations increase property value. All other variables are statistically significant, and the model explains a large portion of the variance in house prices. The results suggest that the instrumented renovations are indeed a key determinant of house prices, and the IV method provides a reliable estimate of their causal effect.
+
 ```{r}
 plot(second_stage_model, which = 1, main = "Residuals vs Fitted")
 plot(second_stage_model, which = 2, main = "Normal Q-Q")
 hist(residuals(second_stage_model), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
 
 ```
+
 Both the residuals vs. fitted plot and the Q-Q plot suggest that the model might benefit from further refinement. The curvature in the residuals suggests possible non-linear relationships, while the non-normality of the residuals indicates the need for additional steps to improve the model fit and the validity of the estimates.
 
 ## Fixed-Effects Model
@@ -686,23 +700,24 @@ fixed_effects_model <- lm(price ~ bedrooms + living_in_m2 + nice_view + perfect_
 # Display summary of the fixed-effects model
 summary(fixed_effects_model)
 ```
+
 ### Interpretation
+
 The fixed-effects model was estimated to account for unobserved location-specific factors that may influence house prices. The results are as follows:
 
-- **Intercept**: The baseline house price is estimated at \$2.487, which is highly significant.
-- **Bedrooms**: The number of bedrooms has a negligible and statistically insignificant effect on house prices (p-value = 0.988).
-- **Living Area**: Each additional square meter of living area increases the house price by 0.0245%, and this effect is highly significant (p-value < 2e-16).
-- **Nice View**: Having a nice view increases house prices by 1.57%, which is highly significant (p-value < 2e-16).
-- **Perfect Condition**: Properties in perfect condition increase in price by approximately 0.68%, with a highly significant p-value (p-value < 2e-16).
-- **Quartile Zones**: The coefficients for quartile zones indicate significant location-based effects:
-  - Quartile Zone 2: +2.39% higher price.
-  - Quartile Zone 3: +4.71% higher price.
-  - Quartile Zone 4: +5.49% higher price.
-  
+-   **Intercept**: The baseline house price is estimated at \$2.487, which is highly significant.
+-   **Bedrooms**: The number of bedrooms has a negligible and statistically insignificant effect on house prices (p-value = 0.988).
+-   **Living Area**: Each additional square meter of living area increases the house price by 0.0245%, and this effect is highly significant (p-value \< 2e-16).
+-   **Nice View**: Having a nice view increases house prices by 1.57%, which is highly significant (p-value \< 2e-16).
+-   **Perfect Condition**: Properties in perfect condition increase in price by approximately 0.68%, with a highly significant p-value (p-value \< 2e-16).
+-   **Quartile Zones**: The coefficients for quartile zones indicate significant location-based effects:
+    -   Quartile Zone 2: +2.39% higher price.
+    -   Quartile Zone 3: +4.71% higher price.
+    -   Quartile Zone 4: +5.49% higher price.
+
 Overall, the fixed-effects model provides strong evidence that property features such as living area, view, and condition, along with the neighborhood zone, are significant determinants of house prices.
 
 The model has a residual standard error of 0.01751 and explains approximately 73.75% of the variance in house prices (R-squared = 0.7375). The F-statistic is 5458, confirming that the model is statistically significant.
-
 
 ## Sensivity Analysis for each Model
 
@@ -720,6 +735,206 @@ mlr_reduced_model <- lm(price ~ bedrooms + living_in_m2 + perfect_condition + qu
 summary(mlr_reduced_model)
 ```
 
+## Detecting Confounding Variables
+
+```{r}
+
+## Step 1: Filter Numeric Columns
+numeric_columns <- dataset_train[, sapply(dataset_train, is.numeric)]
+
+## Step 2: Calculate the Correlation Matrix
+cor_matrix <- cor(numeric_columns, use = "complete.obs")
+
+## Step 3: Identify Confounding Variables
+# A confounder is correlated with both the target variable ('price') and other variables
+cor_target <- abs(cor_matrix["price", ])  # Correlation with the target variable
+confounders <- names(cor_target[cor_target > 0.2])  # Threshold > 0.2
+
+# Remove the target variable ('price') from the list of confounders
+confounders <- setdiff(confounders, "price")
+
+## Step 4: Print Confounding Variables
+print("Confounding Variables:")
+print(confounders)
+
+```
+
+```{r}
+# Install required packages
+if (!requireNamespace("bnlearn", quietly = TRUE)) {
+  install.packages("bnlearn")
+}
+if (!requireNamespace("Rgraphviz", quietly = TRUE)) {
+  BiocManager::install("Rgraphviz")
+}
+library(bnlearn)
+library(Rgraphviz)
+
+# Prepare the data
+# Ensure all columns are numeric or factors (bnlearn requires categorical/numeric data)
+dataset_for_dag <- dataset_train %>%
+  mutate(across(where(is.character), as.factor)) %>%
+  mutate(across(where(is.logical), as.factor))
+
+# Exclude the target variable (`price`) from confounders
+confounding_vars <- confounders  # Replace with your confounders
+dataset_dag <- dataset_for_dag[, c(confounding_vars, "price")]
+
+# Enforce `price` as a sink node
+# Create an empty blacklist of arcs
+arc_constraints <- data.frame(from = "price", to = setdiff(names(dataset_dag), "price"))
+
+# Learn the DAG structure using the Hill-Climbing Algorithm with constraints
+dag_model <- hc(dataset_dag, blacklist = arc_constraints)
+
+# Plot the DAG with `price` highlighted as a sink node
+graphviz.plot(dag_model, highlight = list(nodes = "price", fill = "lightblue"))
 
 
+```
 
+## Categorize living_in_m2 into 10 bins
+
+```{r}
+
+## Create a new dataframe with categorized `living_in_m2`
+dataset_train_categorized <- dataset_train %>%
+  mutate(living_in_m2_category = ntile(living_in_m2, 10))  # Divide into 10 bins
+
+# View the new categorized column
+print(table(dataset_train_categorized$living_in_m2_category))
+
+## Fit the MLR Model with the new categorized dataset
+mlr_model_with_categories <- lm(price ~ bedrooms + grade + has_basement + living_in_m2_category +
+                                  renovated + nice_view + perfect_condition + 
+                                  real_bathrooms + has_lavatory + single_floor +
+                                  month + quartile_zone, data = dataset_train_categorized)
+
+# Summary of the MLR model
+summary(mlr_model_with_categories)
+
+```
+
+## Evaluating models on the test dataset
+
+```{r}
+
+
+# Function to calculate model performance metrics
+evaluate_model <- function(model, test_data, target_col) {
+  # Predict values using the model
+  predictions <- predict(model, newdata = test_data)
+  
+  # Actual values
+  actuals <- test_data[[target_col]]
+  
+  # Calculate performance metrics
+  mse <- mean((predictions - actuals)^2)  # Mean Squared Error
+  rmse <- sqrt(mse)                       # Root Mean Squared Error
+  r_squared <- 1 - sum((predictions - actuals)^2) / sum((actuals - mean(actuals))^2)  # R-squared
+  
+  # Return metrics as a list
+  return(list(MSE = mse, RMSE = rmse, R_squared = r_squared))
+}
+
+# Ensure the test dataset is preprocessed like the training dataset
+# Convert categorical variables to numeric (if needed)
+dataset_test <- dataset_test %>%
+  mutate(across(where(is.factor), as.numeric))
+
+# Evaluate models on the test dataset
+print("Performance for mlr_model_all:")
+performance_mlr_all <- evaluate_model(mlr_model_all, dataset_test, "price")
+print(performance_mlr_all)
+
+print("Performance for mlr_model_ridge:")
+performance_mlr_ridge <- evaluate_model(mlr_model_ridge, dataset_test, "price")
+print(performance_mlr_ridge)
+
+print("Performance for mlr_model_lasso:")
+performance_mlr_lasso <- evaluate_model(mlr_model_lasso, dataset_test, "price")
+print(performance_mlr_lasso)
+
+print("Performance for fixed_effects_model:")
+performance_fixed_effects <- evaluate_model(fixed_effects_model, dataset_test, "price")
+print(performance_fixed_effects)
+
+```
+
+## Key Takeaways
+
+1.  **Best Model:** `mlr_model_all` performs the best overall, with:
+
+    -   Lowest MSE: **11,149,777,983**
+    -   Lowest RMSE: **105,592.5**
+    -   Highest R²: **0.7424**
+
+    This suggests that the full linear regression model with all features captures the relationships in the data most effectively.
+
+2.  **Ridge vs. Lasso:**
+
+    -   Ridge Regression (`mlr_model_ridge`) performs slightly better than Lasso (`mlr_model_lasso`) in terms of:
+        -   MSE: **13,433,303,602** (Ridge) vs. **13,705,406,102** (Lasso)
+        -   RMSE: **115,902.1** (Ridge) vs. **117,070.1** (Lasso)
+        -   R²: **0.6896** (Ridge) vs. **0.6833** (Lasso)
+    -   Neither, however, outperforms `mlr_model_all`.
+
+3.  **Fixed Effects Model:**
+
+    -   The Fixed Effects Model performs better than Ridge and Lasso but falls short compared to `mlr_model_all`:
+        -   MSE: **12,329,637,769**
+        -   RMSE: **111,038.9**
+        -   R²: **0.7151**
+
+4.  **Recommendations:**
+
+    -   Stick with `mlr_model_all` if computational cost is not an issue.
+    -   If feature selection or regularization is necessary, consider Ridge Regression (`mlr_model_ridge`) over Lasso.
+    -   Investigate potential **non-linear relationships** or **interaction effects** to improve the model further, as there may still be unexplained variance in the target variable.
+
+```{r}
+library(dagitty)
+library(ggdag)
+
+# Define the DAG
+lalonde_dag <- dagitty('
+dag {
+  bedroom -> grade
+  bedroom -> price
+  grade -> price
+  living_area -> price
+  bathroom -> price
+  single_floor -> price
+  zone -> price
+  living_area -> bedroom
+  bedroom -> bathroom
+  single_floor -> bedroom
+  living_area -> grade
+  bathroom -> grade
+  single_floor -> grade
+  zone -> grade
+  lavetory -> grade
+  single_floor -> basement
+  living_area -> bathroom
+  living_area -> lavetory
+  living_area -> single_floor 
+  single_floor -> bathroom
+  single_floor -> lavetory
+}
+')
+
+# Visualize the DAG with rectangular nodes
+ggdag(lalonde_dag, text = TRUE) +
+  theme_minimal() +
+  ggtitle("DAG Visualization") +
+  theme(
+    axis.line = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    plot.title = element_text(color = "black", size = 17)
+  ) +
+  geom_dag_node( color = "white", fill = "white", size = 16) +
+  geom_dag_text(color = "black", size = 2) +
+  geom_dag_edges(edge_color = "black")
+```
