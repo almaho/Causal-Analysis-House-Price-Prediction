@@ -1,0 +1,92 @@
+---
+title: "Feature-Selection"
+output: html_document
+date: "2024-12-05"
+---
+
+
+```{r}
+library(readr)
+
+# Define the path to the CSV file in the "arxiv" folder
+file_path <- file.path("data", "df_train.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_train <- read_csv(file_path)
+file_path2 <- file.path("data", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_test <- read_csv(file_path2)
+
+# Display the first few rows of the data
+print(data_train)
+```
+
+```{r}
+library(dplyr)
+
+#dplyr::filter()  # For the 'filter' function in dplyr
+#stats::filter()  # For the 'filter' function in stats
+#base::union()    # For the 'union' function in base R
+
+# Convert specific columns to factors with labels "0" and "1"
+dataset_train <- data_train %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+
+dataset_test <- data_test %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+if (!requireNamespace("lubridate", quietly = TRUE)) {
+  install.packages("lubridate")
+}
+library(lubridate)
+
+
+
+dataset_test <- dataset_test %>%
+  mutate(date = as.numeric(date))  # Converts 'date' column to numeric (days since 1970-01-01)
+
+dataset_train <- dataset_train %>%
+  mutate(date = as.numeric(date)) 
+```
+
+```{r}
+
+
+library(tidyverse)
+data <- dataset_train
+# Assuming your data is in a dataframe named 'data'
+
+# Function to perform t-test for binary features
+perform_t_test_binary <- function(feature, data) {
+  formula <- paste("price ~", feature)
+  model <- lm(formula, data = data)
+  t_test_result <- summary(model)$coefficients[2,]
+  return(t_test_result)
+}
+
+# List of binary features
+binary_features <- c("has_basement", "renovated", "nice_view", "perfect_condition", "has_lavatory", "single_floor","bedrooms" , "grade" ,   "living_in_m2",   
+                    "real_bathrooms"  , 
+                  "month" ,"quartile_zone")
+
+# Perform t-tests and print results
+for (feature in binary_features) {
+  t_test_result <- perform_t_test_binary(feature, data)
+  p_value <- t_test_result["Pr(>|t|)"]
+  print(feature)
+  if (p_value < 0.05) {
+  
+    print(paste("Reject H0 for", feature, ": The feature is significant."))
+  } else {
+    
+
+    print(paste("Fail to reject H0 for", feature, ": The feature is not significant."))
+  }
+}
+```
