@@ -63,30 +63,135 @@ data <- dataset_train
 # Assuming your data is in a dataframe named 'data'
 
 # Function to perform t-test for binary features
-perform_t_test_binary <- function(feature, data) {
-  formula <- paste("price ~", feature)
-  model <- lm(formula, data = data)
-  t_test_result <- summary(model)$coefficients[2,]
-  return(t_test_result)
-}
 
 # List of binary features
-binary_features <- c("has_basement", "renovated", "nice_view", "perfect_condition", "has_lavatory", "single_floor","bedrooms" , "grade" ,   "living_in_m2",   
+features <- c("has_basement", "renovated", "nice_view", "perfect_condition", "has_lavatory", "single_floor","bedrooms" , "grade" ,   "living_in_m2",   
+                    "real_bathrooms"  , 
+                  "month" ,"quartile_zone")
+# Initialize result dataframe for single features
+# Define alpha for significance level
+alpha <- 0.05
+
+# Initialize result dataframe for single features
+single_feature_results <- data.frame(
+  Feature = features,
+  t_statistic = NA,
+  Critical_Value = NA,
+  Decision = NA
+)
+
+# Perform hypothesis testing for each feature
+for (i in seq_along(features)) {
+  # Construct single-feature model
+  formula <- as.formula(paste("price ~", features[i]))
+  
+  # Fit linear model
+  fit <- lm(formula, data = data)
+  
+  # Get the row names of coefficients to find the feature
+  coef_names <- rownames(summary(fit)$coefficients)
+  
+  # Check if the feature is in the coefficients table
+  if (features[i] %in% coef_names) {
+    # Extract t-statistic for the feature
+    t_statistic <- summary(fit)$coefficients[features[i], "t value"]
+    
+    # Degrees of freedom
+    df <- summary(fit)$df[2]
+    
+    # Calculate critical value
+    critical_value <- qt(1 - alpha / 2, df)
+    
+    # Store results
+    single_feature_results$t_statistic[i] <- t_statistic
+    single_feature_results$Critical_Value[i] <- critical_value
+    
+    # Decision based on |t_statistic| vs critical value
+    if (abs(t_statistic) > critical_value) {
+      single_feature_results$Decision[i] <- "Reject H0"
+    } else {
+      single_feature_results$Decision[i] <- "Fail to Reject H0"
+    }
+  } else {
+    # If the feature is not found in the model, handle accordingly
+    single_feature_results$t_statistic[i] <- NA
+    single_feature_results$Critical_Value[i] <- NA
+    single_feature_results$Decision[i] <- "Feature Not in Model"
+  }
+}
+
+# Display the results
+knitr::kable(
+  single_feature_results,
+  caption = "Hypothesis Testing Results for Single Features Affecting `price`",
+  format = "html"
+)
+
+
+```
+
+```{r}
+library(dplyr)
+library(tidyr)
+library(knitr)
+
+# Define features
+features <- c("has_basement", "renovated", "nice_view", "perfect_condition", "has_lavatory", "single_floor","bedrooms" , "grade" ,   "living_in_m2",   
                     "real_bathrooms"  , 
                   "month" ,"quartile_zone")
 
-# Perform t-tests and print results
-for (feature in binary_features) {
-  t_test_result <- perform_t_test_binary(feature, data)
-  p_value <- t_test_result["Pr(>|t|)"]
-  print(feature)
-  if (p_value < 0.05) {
-  
-    print(paste("Reject H0 for", feature, ": The feature is significant."))
-  } else {
-    
 
-    print(paste("Fail to reject H0 for", feature, ": The feature is not significant."))
+# Significance level
+alpha <- 0.05
+
+# Initialize result matrix
+result_matrix <- matrix("Fail", nrow = length(features), ncol = length(features),
+                        dimnames = list(features, features))
+
+# Perform pairwise interaction tests
+for (i in seq_along(features)) {
+  for (j in seq_along(features)) {
+    if (i < j) {
+      # Construct interaction model
+      formula <- as.formula(paste("price ~", features[i], "*", features[j]))
+      
+      # Fit linear model
+      fit <- lm(formula, data = data)
+      
+      # Check if interaction term exists in the model
+      interaction_term <- paste(features[i], ":", features[j], sep = "")
+      coef_names <- rownames(summary(fit)$coefficients)
+      
+      if (interaction_term %in% coef_names) {
+        # Extract interaction term t-statistic and degrees of freedom
+        t_statistic <- summary(fit)$coefficients[interaction_term, "t value"]
+        df <- summary(fit)$df[2]  # Residual degrees of freedom
+        
+        # Calculate critical value
+        critical_value <- qt(1 - alpha / 2, df)
+        
+        # Decision based on |t_statistic| vs critical value
+        if (abs(t_statistic) > critical_value) {
+          result_matrix[i, j] <- "Reject H0"
+        }
+      } else {
+        # Skip pairs where the interaction term is not valid
+        result_matrix[i, j] <- "Invalid Interaction"
+      }
+    }
   }
 }
+
+# Convert to data frame for display
+result_df <- as.data.frame(result_matrix)
+
+# Display the interaction results table
+knitr::kable(
+  result_df,
+  caption = "Interaction Hypothesis Testing Results for `price` Using Critical Value",
+  format = "html"
+)
+
 ```
+
+

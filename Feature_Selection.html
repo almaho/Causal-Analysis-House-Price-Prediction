@@ -455,56 +455,863 @@ dataset_train &lt;- dataset_train %&gt;%
 # Assuming your data is in a dataframe named &#39;data&#39;
 
 # Function to perform t-test for binary features
-perform_t_test_binary &lt;- function(feature, data) {
-  formula &lt;- paste(&quot;price ~&quot;, feature)
-  model &lt;- lm(formula, data = data)
-  t_test_result &lt;- summary(model)$coefficients[2,]
-  return(t_test_result)
-}
 
 # List of binary features
-binary_features &lt;- c(&quot;has_basement&quot;, &quot;renovated&quot;, &quot;nice_view&quot;, &quot;perfect_condition&quot;, &quot;has_lavatory&quot;, &quot;single_floor&quot;,&quot;bedrooms&quot; , &quot;grade&quot; ,   &quot;living_in_m2&quot;,   
+features &lt;- c(&quot;has_basement&quot;, &quot;renovated&quot;, &quot;nice_view&quot;, &quot;perfect_condition&quot;, &quot;has_lavatory&quot;, &quot;single_floor&quot;,&quot;bedrooms&quot; , &quot;grade&quot; ,   &quot;living_in_m2&quot;,   
+                    &quot;real_bathrooms&quot;  , 
+                  &quot;month&quot; ,&quot;quartile_zone&quot;)
+# Initialize result dataframe for single features
+# Define alpha for significance level
+alpha &lt;- 0.05
+
+# Initialize result dataframe for single features
+single_feature_results &lt;- data.frame(
+  Feature = features,
+  t_statistic = NA,
+  Critical_Value = NA,
+  Decision = NA
+)
+
+# Perform hypothesis testing for each feature
+for (i in seq_along(features)) {
+  # Construct single-feature model
+  formula &lt;- as.formula(paste(&quot;price ~&quot;, features[i]))
+  
+  # Fit linear model
+  fit &lt;- lm(formula, data = data)
+  
+  # Get the row names of coefficients to find the feature
+  coef_names &lt;- rownames(summary(fit)$coefficients)
+  
+  # Check if the feature is in the coefficients table
+  if (features[i] %in% coef_names) {
+    # Extract t-statistic for the feature
+    t_statistic &lt;- summary(fit)$coefficients[features[i], &quot;t value&quot;]
+    
+    # Degrees of freedom
+    df &lt;- summary(fit)$df[2]
+    
+    # Calculate critical value
+    critical_value &lt;- qt(1 - alpha / 2, df)
+    
+    # Store results
+    single_feature_results$t_statistic[i] &lt;- t_statistic
+    single_feature_results$Critical_Value[i] &lt;- critical_value
+    
+    # Decision based on |t_statistic| vs critical value
+    if (abs(t_statistic) &gt; critical_value) {
+      single_feature_results$Decision[i] &lt;- &quot;Reject H0&quot;
+    } else {
+      single_feature_results$Decision[i] &lt;- &quot;Fail to Reject H0&quot;
+    }
+  } else {
+    # If the feature is not found in the model, handle accordingly
+    single_feature_results$t_statistic[i] &lt;- NA
+    single_feature_results$Critical_Value[i] &lt;- NA
+    single_feature_results$Decision[i] &lt;- &quot;Feature Not in Model&quot;
+  }
+}
+
+# Display the results
+knitr::kable(
+  single_feature_results,
+  caption = &quot;Hypothesis Testing Results for Single Features Affecting `price`&quot;,
+  format = &quot;html&quot;
+)</code></pre>
+<table>
+<caption>
+Hypothesis Testing Results for Single Features Affecting
+<code>price</code>
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+Feature
+</th>
+<th style="text-align:right;">
+t_statistic
+</th>
+<th style="text-align:right;">
+Critical_Value
+</th>
+<th style="text-align:left;">
+Decision
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+has_basement
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+Feature Not in Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+renovated
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+Feature Not in Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+nice_view
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+Feature Not in Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+perfect_condition
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+Feature Not in Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+has_lavatory
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+Feature Not in Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+single_floor
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:right;">
+NA
+</td>
+<td style="text-align:left;">
+Feature Not in Model
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+bedrooms
+</td>
+<td style="text-align:right;">
+35.845644
+</td>
+<td style="text-align:right;">
+1.960138
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+grade
+</td>
+<td style="text-align:right;">
+92.871998
+</td>
+<td style="text-align:right;">
+1.960138
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+living_in_m2
+</td>
+<td style="text-align:right;">
+90.544297
+</td>
+<td style="text-align:right;">
+1.960138
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+real_bathrooms
+</td>
+<td style="text-align:right;">
+49.306104
+</td>
+<td style="text-align:right;">
+1.960138
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+month
+</td>
+<td style="text-align:right;">
+-1.312893
+</td>
+<td style="text-align:right;">
+1.960138
+</td>
+<td style="text-align:left;">
+Fail to Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+quartile_zone
+</td>
+<td style="text-align:right;">
+105.297036
+</td>
+<td style="text-align:right;">
+1.960138
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+</tbody>
+</table>
+<pre class="r"><code>library(dplyr)
+library(tidyr)
+library(knitr)
+
+# Define features
+features &lt;- c(&quot;has_basement&quot;, &quot;renovated&quot;, &quot;nice_view&quot;, &quot;perfect_condition&quot;, &quot;has_lavatory&quot;, &quot;single_floor&quot;,&quot;bedrooms&quot; , &quot;grade&quot; ,   &quot;living_in_m2&quot;,   
                     &quot;real_bathrooms&quot;  , 
                   &quot;month&quot; ,&quot;quartile_zone&quot;)
 
-# Perform t-tests and print results
-for (feature in binary_features) {
-  t_test_result &lt;- perform_t_test_binary(feature, data)
-  p_value &lt;- t_test_result[&quot;Pr(&gt;|t|)&quot;]
-  print(feature)
-  if (p_value &lt; 0.05) {
-  
-    print(paste(&quot;Reject H0 for&quot;, feature, &quot;: The feature is significant.&quot;))
-  } else {
-    
 
-    print(paste(&quot;Fail to reject H0 for&quot;, feature, &quot;: The feature is not significant.&quot;))
+# Significance level
+alpha &lt;- 0.05
+
+# Initialize result matrix
+result_matrix &lt;- matrix(&quot;Fail&quot;, nrow = length(features), ncol = length(features),
+                        dimnames = list(features, features))
+
+# Perform pairwise interaction tests
+for (i in seq_along(features)) {
+  for (j in seq_along(features)) {
+    if (i &lt; j) {
+      # Construct interaction model
+      formula &lt;- as.formula(paste(&quot;price ~&quot;, features[i], &quot;*&quot;, features[j]))
+      
+      # Fit linear model
+      fit &lt;- lm(formula, data = data)
+      
+      # Check if interaction term exists in the model
+      interaction_term &lt;- paste(features[i], &quot;:&quot;, features[j], sep = &quot;&quot;)
+      coef_names &lt;- rownames(summary(fit)$coefficients)
+      
+      if (interaction_term %in% coef_names) {
+        # Extract interaction term t-statistic and degrees of freedom
+        t_statistic &lt;- summary(fit)$coefficients[interaction_term, &quot;t value&quot;]
+        df &lt;- summary(fit)$df[2]  # Residual degrees of freedom
+        
+        # Calculate critical value
+        critical_value &lt;- qt(1 - alpha / 2, df)
+        
+        # Decision based on |t_statistic| vs critical value
+        if (abs(t_statistic) &gt; critical_value) {
+          result_matrix[i, j] &lt;- &quot;Reject H0&quot;
+        }
+      } else {
+        # Skip pairs where the interaction term is not valid
+        result_matrix[i, j] &lt;- &quot;Invalid Interaction&quot;
+      }
+    }
   }
-}</code></pre>
-<pre><code>## [1] &quot;has_basement&quot;
-## [1] &quot;Reject H0 for has_basement : The feature is significant.&quot;
-## [1] &quot;renovated&quot;
-## [1] &quot;Reject H0 for renovated : The feature is significant.&quot;
-## [1] &quot;nice_view&quot;
-## [1] &quot;Reject H0 for nice_view : The feature is significant.&quot;
-## [1] &quot;perfect_condition&quot;
-## [1] &quot;Reject H0 for perfect_condition : The feature is significant.&quot;
-## [1] &quot;has_lavatory&quot;
-## [1] &quot;Reject H0 for has_lavatory : The feature is significant.&quot;
-## [1] &quot;single_floor&quot;
-## [1] &quot;Reject H0 for single_floor : The feature is significant.&quot;
-## [1] &quot;bedrooms&quot;
-## [1] &quot;Reject H0 for bedrooms : The feature is significant.&quot;
-## [1] &quot;grade&quot;
-## [1] &quot;Reject H0 for grade : The feature is significant.&quot;
-## [1] &quot;living_in_m2&quot;
-## [1] &quot;Reject H0 for living_in_m2 : The feature is significant.&quot;
-## [1] &quot;real_bathrooms&quot;
-## [1] &quot;Reject H0 for real_bathrooms : The feature is significant.&quot;
-## [1] &quot;month&quot;
-## [1] &quot;Fail to reject H0 for month : The feature is not significant.&quot;
-## [1] &quot;quartile_zone&quot;
-## [1] &quot;Reject H0 for quartile_zone : The feature is significant.&quot;</code></pre>
+}
+
+# Convert to data frame for display
+result_df &lt;- as.data.frame(result_matrix)
+
+# Display the interaction results table
+knitr::kable(
+  result_df,
+  caption = &quot;Interaction Hypothesis Testing Results for `price` Using Critical Value&quot;,
+  format = &quot;html&quot;
+)</code></pre>
+<table>
+<caption>
+Interaction Hypothesis Testing Results for <code>price</code> Using
+Critical Value
+</caption>
+<thead>
+<tr>
+<th style="text-align:left;">
+</th>
+<th style="text-align:left;">
+has_basement
+</th>
+<th style="text-align:left;">
+renovated
+</th>
+<th style="text-align:left;">
+nice_view
+</th>
+<th style="text-align:left;">
+perfect_condition
+</th>
+<th style="text-align:left;">
+has_lavatory
+</th>
+<th style="text-align:left;">
+single_floor
+</th>
+<th style="text-align:left;">
+bedrooms
+</th>
+<th style="text-align:left;">
+grade
+</th>
+<th style="text-align:left;">
+living_in_m2
+</th>
+<th style="text-align:left;">
+real_bathrooms
+</th>
+<th style="text-align:left;">
+month
+</th>
+<th style="text-align:left;">
+quartile_zone
+</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;">
+has_basement
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+renovated
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+nice_view
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+perfect_condition
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+has_lavatory
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+single_floor
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+<td style="text-align:left;">
+Invalid Interaction
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+bedrooms
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+grade
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+living_in_m2
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+real_bathrooms
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+month
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Reject H0
+</td>
+</tr>
+<tr>
+<td style="text-align:left;">
+quartile_zone
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+<td style="text-align:left;">
+Fail
+</td>
+</tr>
+</tbody>
+</table>
 
 
 
