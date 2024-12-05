@@ -755,7 +755,7 @@ for (i in seq_along(features)) {
         }
       } else {
         # Skip pairs where the interaction term is not valid
-        result_matrix[i, j] &lt;- &quot;Invalid Interaction&quot;
+        result_matrix[i, j] &lt;- &quot;Fail&quot;
       }
     }
   }
@@ -826,37 +826,37 @@ has_basement
 Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 </tr>
 <tr>
@@ -870,34 +870,34 @@ Fail
 Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 </tr>
 <tr>
@@ -914,31 +914,31 @@ Fail
 Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 </tr>
 <tr>
@@ -958,28 +958,28 @@ Fail
 Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 </tr>
 <tr>
@@ -1002,25 +1002,25 @@ Fail
 Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 </tr>
 <tr>
@@ -1046,22 +1046,22 @@ Fail
 Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 <td style="text-align:left;">
-Invalid Interaction
+Fail
 </td>
 </tr>
 <tr>
@@ -1312,6 +1312,83 @@ Fail
 </tr>
 </tbody>
 </table>
+<pre class="r"><code>selected_pairs &lt;- list()
+
+# Iterate over the matrix to find &quot;Reject H0&quot;
+for (i in seq_len(nrow(result_matrix))) {
+  for (j in seq_len(ncol(result_matrix))) {
+    if (result_matrix[i, j] == &quot;Reject H0&quot; &amp;&amp; i &lt; j) {  # Avoid duplicate pairs
+      selected_pairs &lt;- append(selected_pairs, list(c(rownames(result_matrix)[i], colnames(result_matrix)[j])))
+    }
+  }
+}
+
+# Display selected pairs
+
+for (pair in selected_pairs) {
+  feature1 &lt;- pair[1]
+  feature2 &lt;- pair[2]
+  interaction_col &lt;- paste0(feature1, &quot;_x_&quot;, feature2)
+  
+  # Add interaction term as a new column
+  data[[interaction_col]] &lt;- data[[feature1]] * data[[feature2]]
+}</code></pre>
+<pre class="r"><code># Define the features for the model
+original_features &lt;- c(&quot;has_basement&quot;, &quot;renovated&quot;, &quot;nice_view&quot;, &quot;perfect_condition&quot;, 
+                       &quot;has_lavatory&quot;, &quot;single_floor&quot;, &quot;bedrooms&quot;, &quot;grade&quot;, 
+                       &quot;living_in_m2&quot;, &quot;real_bathrooms&quot;, &quot;quartile_zone&quot;)
+
+# Combine original features and interaction terms
+interaction_features &lt;- sapply(selected_pairs, function(pair) paste0(pair[1], &quot;_x_&quot;, pair[2]))
+all_features &lt;- c(original_features, interaction_features)
+
+# Build the formula for the linear model
+model_formula &lt;- as.formula(paste(&quot;price ~&quot;, paste(all_features, collapse = &quot; + &quot;)))
+
+# Train the model
+fit &lt;- lm(model_formula, data = data)
+
+# Summarize the model
+summary(fit)</code></pre>
+<pre><code>## 
+## Call:
+## lm(formula = model_formula, data = data)
+## 
+## Residuals:
+##     Min      1Q  Median      3Q     Max 
+## -512247  -64313   -8918   51337  593158 
+## 
+## Coefficients:
+##                                 Estimate Std. Error t value Pr(&gt;|t|)    
+## (Intercept)                     92835.14   12651.17   7.338 2.29e-13 ***
+## has_basement1                   29079.57    2154.16  13.499  &lt; 2e-16 ***
+## renovated1                      64149.36    4604.74  13.931  &lt; 2e-16 ***
+## nice_view1                     104393.24    3433.07  30.408  &lt; 2e-16 ***
+## perfect_condition1              65390.76    3411.61  19.167  &lt; 2e-16 ***
+## has_lavatory1                  -18494.79    2288.37  -8.082 6.90e-16 ***
+## single_floor1                  -24702.92    2263.00 -10.916  &lt; 2e-16 ***
+## bedrooms                       -16013.53    6112.29  -2.620 0.008806 ** 
+## grade                           12874.28    5951.96   2.163 0.030556 *  
+## living_in_m2                      928.24     106.13   8.746  &lt; 2e-16 ***
+## real_bathrooms                 -61724.33    9092.82  -6.788 1.18e-11 ***
+## quartile_zone                   74861.77    3638.94  20.572  &lt; 2e-16 ***
+## bedrooms_x_grade                 5409.67    2333.23   2.319 0.020435 *  
+## bedrooms_x_living_in_m2          -237.30      32.45  -7.313 2.75e-13 ***
+## bedrooms_x_real_bathrooms       12400.72    3359.83   3.691 0.000224 ***
+## bedrooms_x_quartile_zone        10273.94    1611.94   6.374 1.91e-10 ***
+## grade_x_living_in_m2               50.83      21.17   2.402 0.016340 *  
+## grade_x_real_bathrooms           6094.54    2543.53   2.396 0.016584 *  
+## grade_x_quartile_zone            1398.01    1226.88   1.139 0.254519    
+## living_in_m2_x_real_bathrooms     132.35      35.09   3.772 0.000163 ***
+## living_in_m2_x_quartile_zone       95.15      21.73   4.379 1.20e-05 ***
+## real_bathrooms_x_quartile_zone  -7366.04    1853.55  -3.974 7.10e-05 ***
+## month_x_quartile_zone            -910.72     108.44  -8.398  &lt; 2e-16 ***
+## ---
+## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
+## 
+## Residual standard error: 102900 on 13580 degrees of freedom
+## Multiple R-squared:  0.7541, Adjusted R-squared:  0.7537 
+## F-statistic:  1893 on 22 and 13580 DF,  p-value: &lt; 2.2e-16</code></pre>
 
 
 

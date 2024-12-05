@@ -176,7 +176,7 @@ for (i in seq_along(features)) {
         }
       } else {
         # Skip pairs where the interaction term is not valid
-        result_matrix[i, j] <- "Invalid Interaction"
+        result_matrix[i, j] <- "Fail"
       }
     }
   }
@@ -193,5 +193,54 @@ knitr::kable(
 )
 
 ```
+
+```{r}
+
+
+selected_pairs <- list()
+
+# Iterate over the matrix to find "Reject H0"
+for (i in seq_len(nrow(result_matrix))) {
+  for (j in seq_len(ncol(result_matrix))) {
+    if (result_matrix[i, j] == "Reject H0" && i < j) {  # Avoid duplicate pairs
+      selected_pairs <- append(selected_pairs, list(c(rownames(result_matrix)[i], colnames(result_matrix)[j])))
+    }
+  }
+}
+
+# Display selected pairs
+
+for (pair in selected_pairs) {
+  feature1 <- pair[1]
+  feature2 <- pair[2]
+  interaction_col <- paste0(feature1, "_x_", feature2)
+  
+  # Add interaction term as a new column
+  data[[interaction_col]] <- data[[feature1]] * data[[feature2]]
+}
+```
+
+
+```{r}
+
+# Define the features for the model
+original_features <- c("has_basement", "renovated", "nice_view", "perfect_condition", 
+                       "has_lavatory", "single_floor", "bedrooms", "grade", 
+                       "living_in_m2", "real_bathrooms", "quartile_zone")
+
+# Combine original features and interaction terms
+interaction_features <- sapply(selected_pairs, function(pair) paste0(pair[1], "_x_", pair[2]))
+all_features <- c(original_features, interaction_features)
+
+# Build the formula for the linear model
+model_formula <- as.formula(paste("price ~", paste(all_features, collapse = " + ")))
+
+# Train the model
+fit <- lm(model_formula, data = data)
+
+# Summarize the model
+summary(fit)
+```
+
 
 
