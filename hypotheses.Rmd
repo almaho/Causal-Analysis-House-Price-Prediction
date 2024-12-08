@@ -1,0 +1,228 @@
+---
+title: "Project"
+output: html_document
+date: "2024-11-16"
+---
+
+## Read Data
+
+```{r}
+library(readr)
+library(dplyr)
+
+
+# Define the path to the CSV file in the "arxiv" folder
+file_path <- file.path("data", "df_train.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_train <- read_csv(file_path)
+file_path2 <- file.path("data", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_test <- read_csv(file_path2)
+
+# Display the first few rows of the data
+print(data_train)
+```
+
+## Preprocessing
+
+```{r}
+
+#dplyr::filter()  # For the 'filter' function in dplyr
+#stats::filter()  # For the 'filter' function in stats
+#base::union()    # For the 'union' function in base R
+
+# Convert specific columns to factors with labels "0" and "1"
+dataset_train <- data_train %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+
+dataset_test <- data_test %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+if (!requireNamespace("lubridate", quietly = TRUE)) {
+  install.packages("lubridate")
+}
+library(lubridate)
+
+
+
+dataset_test <- dataset_test %>%
+  mutate(date = as.numeric(date))  # Converts 'date' column to numeric (days since 1970-01-01)
+
+dataset_train <- dataset_train %>%
+  mutate(date = as.numeric(date)) 
+```
+
+```{r}
+
+# Replace non-numeric columns in-place
+dataset_train <- dataset_train %>%
+  mutate(across(everything(), ~ as.numeric(as.character(.))))
+
+# Check for remaining non-numeric columns
+non_numeric_cols <- sapply(dataset_train, function(col) !is.numeric(col))
+if (any(non_numeric_cols)) {
+  print("Non-numeric columns remain:")
+  print(names(dataset_train)[non_numeric_cols])
+} else {
+  print("All columns are now numeric.")
+}
+
+print(dataset_train)
+```
+
+H0: adding
+
+```{r}
+# Load necessary library
+# install.packages("lmtest")
+# install.packages("car")
+library(lmtest)
+library(car)
+
+# Convert month and quartile_zone to factors for fixed effects
+dataset_train$month <- as.factor(dataset_train$month)
+dataset_train$quartile_zone <- as.factor(dataset_train$quartile_zone)
+dataset_train$price_scaled <- dataset_train$price / 1000
+
+# Fit the multiple linear regression model
+mlr_model <- lm(price_scaled ~ living_in_m2 + bedrooms + grade + has_basement +
+                  renovated + nice_view + perfect_condition + real_bathrooms +
+                  has_lavatory + single_floor + month + quartile_zone,
+                data = dataset_train)
+
+# Summary of the model
+summary(mlr_model)
+
+# Check for heteroscedasticity using Breusch-Pagan test
+bptest(mlr_model)
+
+# Check for multicollinearity using VIF (Variance Inflation Factor)
+vif(mlr_model)
+```
+```{r}
+# Install and load necessary libraries
+if (!requireNamespace("broom", quietly = TRUE)) install.packages("broom")
+if (!requireNamespace("gt", quietly = TRUE)) install.packages("gt")
+#install.packages("webshot2")  # Updated version of webshot for rendering images
+library(broom)
+library(gt)
+
+# Tidy the regression model
+tidy_model <- tidy(mlr_model)
+
+# Customize and format the table with gt
+tidy_model %>%
+  gt() %>%
+  tab_header(
+    title = "Multiple Linear Regression Results",
+    subtitle = "House Price Analysis"
+  ) %>%
+  fmt_number(
+    columns = vars(estimate, std.error, statistic, p.value),
+    decimals = 2
+  ) %>%
+  cols_label(
+    term = "Variable",
+    estimate = "Estimate",
+    std.error = "Std. Error",
+    statistic = "t-Statistic",
+    p.value = "p-Value"
+  ) %>%
+  data_color(
+    columns = vars(estimate),
+    colors = scales::col_numeric(
+      palette = c("blue", "white", "red"),
+      domain = c(-max(abs(tidy_model$estimate)), max(abs(tidy_model$estimate)))
+    )
+  ) %>%
+  data_color(
+    columns = vars(p.value),
+    colors = scales::col_numeric(
+      palette = c("green", "yellow", "red"),
+      domain = c(0, 1)
+    )
+  ) %>%
+  tab_style(
+    style = list(cell_fill(color = "lightgray")),
+    locations = cells_body(columns = vars(term))
+  ) %>%
+  gtsave("mlr_model_colorful_summary.html")
+
+```
+
+```{r}
+residuals <- resid(mlr_model)
+hist(residuals, breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+qqnorm(residuals)
+qqline(residuals, col = "red")
+
+normalized_residuals <- (residuals - mean(residuals)) / sd(residuals)
+# Perform the Kolmogorov-Smirnov test
+ks.test(normalized_residuals, "pnorm", mean = 0, sd = 1)
+
+# install.packages("moments")
+library(moments)
+skewness(residuals)
+kurtosis(residuals)
+
+plot(fitted(mlr_model), residuals,
+     main = "Residuals vs Fitted",
+     xlab = "Fitted Values",
+     ylab = "Residuals")
+abline(h = 0, col = "red", lty = 2)
+
+library(ggplot2)
+ggplot(data.frame(residuals), aes(x = residuals)) +
+  geom_density(color = "blue", fill = "lightblue") +
+  stat_function(fun = dnorm, args = list(mean = mean(residuals), sd = sd(residuals)), 
+                color = "red", linetype = "dashed") +
+  ggtitle("Residual Density vs. Normal Distribution")
+
+
+if (!requireNamespace("MASS", quietly = TRUE)) install.packages("MASS")
+library(MASS)
+
+
+```
+
+```{r}
+boxcox_result <- boxcox(mlr_model, lambda = seq(-2, 2, by = 0.1), 
+                        main = "Box-Cox Transformation for price_scaled")
+
+# Extract the optimal lambda value
+lambda_best <- boxcox_result$x[which.max(boxcox_result$y)]
+cat("Optimal lambda:", lambda_best, "\n")
+
+if (lambda_best == 0) {
+  dataset_train$price_transformed <- log(dataset_train$price_scaled)
+} else {
+  dataset_train$price_transformed <- (dataset_train$price_scaled^lambda_best - 1) / lambda_best
+}
+
+# Refit the model with the transformed target variable
+mlr_model_transformed <- lm(price_transformed ~ living_in_m2 + bedrooms + grade + has_basement +
+                              renovated + nice_view + perfect_condition + real_bathrooms +
+                              has_lavatory + single_floor + factor(month) + factor(quartile_zone),
+                            data = dataset_train)
+
+# Summary of the new model
+summary(mlr_model_transformed)
+
+hist(resid(mlr_model_transformed), breaks = 30, main = "Histogram of Residuals")
+qqnorm(resid(mlr_model_transformed))
+qqline(resid(mlr_model_transformed), col = "red")
+
+plot(fitted(mlr_model_transformed), resid(mlr_model_transformed),
+     main = "Residuals vs Fitted", xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, col = "red", lty = 2)
+
+```
+
+
