@@ -1,0 +1,387 @@
+---
+title: "Project"
+output: html_document
+date: "2024-11-16"
+---
+
+## Read Data
+
+```{r}
+library(readr)
+
+# Define the path to the CSV file in the "arxiv" folder
+file_path <- file.path("data", "df_train.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_train <- read_csv(file_path)
+file_path2 <- file.path("data", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_test <- read_csv(file_path2)
+
+# Display the first few rows of the data
+print(data_train)
+```
+
+## Preprocessing
+
+```{r}
+library(dplyr)
+
+#dplyr::filter()  # For the 'filter' function in dplyr
+#stats::filter()  # For the 'filter' function in stats
+#base::union()    # For the 'union' function in base R
+
+# Convert specific columns to factors with labels "0" and "1"
+dataset_train <- data_train %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+
+dataset_test <- data_test %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+if (!requireNamespace("lubridate", quietly = TRUE)) {
+  install.packages("lubridate")
+}
+library(lubridate)
+
+
+
+dataset_test <- dataset_test %>%
+  mutate(date = as.numeric(date))  # Converts 'date' column to numeric (days since 1970-01-01)
+
+dataset_train <- dataset_train %>%
+  mutate(date = as.numeric(date)) 
+```
+
+```{r}
+
+# Replace non-numeric columns in-place
+dataset_train <- dataset_train %>%
+  mutate(across(everything(), ~ as.numeric(as.character(.))))
+
+# Check for remaining non-numeric columns
+non_numeric_cols <- sapply(dataset_train, function(col) !is.numeric(col))
+if (any(non_numeric_cols)) {
+  print("Non-numeric columns remain:")
+  print(names(dataset_train)[non_numeric_cols])
+} else {
+  print("All columns are now numeric.")
+}
+
+print(dataset_train)
+```
+
+
+### How does renovation effect the price?
+```{r}
+# Assuming your data is in a dataframe named `data`
+data <- dataset_train
+boxplot(price ~ renovated, data = data,
+        main = "Price vs Renovated",
+        xlab = "Renovated",
+        ylab = "Price",
+        col = c("lightblue", "lightgreen"))
+
+```
+
+```{r}
+
+# Install DiagrammeR if not already installed
+if (!requireNamespace("DiagrammeR", quietly = TRUE)) {
+  install.packages("DiagrammeR")
+}
+
+# Load DiagrammeR
+library(DiagrammeR)
+
+# Create the directed graph
+graph <- grViz("
+  digraph {
+    # Define nodes
+    T [label='Renovated']
+    Y [label='Price']
+    X [label='Perfect Condition']
+
+    
+    # Define edges
+    T -> X
+    X -> Y
+    T->Y
+  }
+")
+
+# Render the graph
+graph
+```
+
+
+```{r}
+
+m <- lm(price/1000 ~ renovated, data = data)
+summary(m)
+```
+
+```{r}
+
+dataset_train$month <- as.factor(dataset_train$month)
+dataset_train$quartile_zone <- as.factor(dataset_train$quartile_zone)
+dataset_train$price_scaled <- dataset_train$price / 1000
+
+# Fit the multiple linear regression model
+mlr_model <- lm(price ~ renovated +living_in_m2  + grade  + 
+                    nice_view   +month + 
+                  has_lavatory   + quartile_zone+ real_bathrooms +  single_floor+ has_basement,
+                data = dataset_train)
+
+# Summary of the model
+summary(mlr_model)
+```
+
+### Propensity Score
+```{r}
+
+
+    
+
+data$month <- as.factor(data$month)
+data$quartile_zone <- as.factor(data$quartile_zone)
+data$price_scaled <- data$price / 1000
+
+# Train logistic regression model
+ps_model <- glm(renovated ~ living_in_m2  + grade  + 
+                    nice_view   +month + 
+                  has_lavatory   + quartile_zone+ real_bathrooms +  single_floor+ has_basement+  perfect_condition + bedrooms ,
+                data = data, 
+                family = binomial)
+
+# Calculate propensity scores
+data$propensity_score <- predict(ps_model, newdata = data, type = "response")
+
+# View the first few rows of selected columns
+head(data[, c("renovated", "price", "propensity_score")])
+```
+```{r}
+
+# Calculate weights
+data$weight_t <- ifelse(data$renovated == 1, 
+                                   1 / data$propensity_score, 
+                                   NA)
+data$weight_nt <- ifelse(data$renovated == 0, 
+                                    1 / (1 - data$propensity_score), 
+                                    NA)
+
+# Display original sample size
+cat("Original Sample Size:", nrow(data), "\n")
+
+# Treated population sample size (sum of weights for treated group)
+treated_population_sample_size <- sum(data$weight_t, na.rm = TRUE)
+cat("Treated Population Sample Size:", treated_population_sample_size, "\n")
+
+# Untreated population sample size (sum of weights for untreated group)
+untreated_population_sample_size <- sum(data$weight_nt, na.rm = TRUE)
+cat("Untreated Population Sample Size:", untreated_population_sample_size, "\n")
+
+```
+
+```{r}
+library(ggplot2)
+# Generate the box plot
+ggplot(data, aes(x = factor(nice_view), y = propensity_score)) +
+  geom_boxplot(fill = "skyblue", alpha = 0.7) +
+  labs(title = "Confounding Evidence",
+       x = "nice_view ",
+       y = "Propensity Score") +
+  theme_minimal()
+```
+
+```{r}
+# Generate the box plot
+ggplot(data, aes(x = factor(grade), y = propensity_score)) +
+  geom_boxplot(fill = "skyblue", alpha = 0.7) +
+  labs(title = "Confounding Evidence",
+       x = "grade ",
+       y = "Propensity Score") +
+  theme_minimal()
+```
+
+
+```{r}
+# Generate the box plot
+ggplot(data, aes(x = factor(perfect_condition), y = propensity_score)) +
+  geom_boxplot(fill = "skyblue", alpha = 0.7) +
+  labs(title = "Confounding Evidence",
+       x = "grade ",
+       y = "Propensity Score") +
+  theme_minimal()
+```
+
+```{r}
+library(ggplot2)
+
+# Add a group column to distinguish treated vs. non-treated
+data$group <- ifelse(data$renovated == 1, "Treated", "Non-Treated")
+
+# Plot histograms with a legend
+ggplot(data, aes(x = propensity_score, fill = group)) +
+  geom_histogram(bins = 30, alpha = 0.5, position = "identity") +
+  ggtitle("Positivity Check") +
+  labs(x = "Propensity Score", y = "Count", fill = "Group") +
+  theme_minimal() +
+  theme(legend.position = "top")
+```
+
+```{r}
+
+# Calculate weights
+data$weight <- (data$renovated - data$propensity_score) / 
+                          (data$propensity_score * (1 - data$propensity_score))
+
+# Separate weights for treated and untreated groups
+weight_t <- 1 / data$propensity_score[data$renovated == 1]
+weight_nt <- 1 / (1 - data$propensity_score[data$renovated == 0])
+
+# Calculate Y1 (treated outcome)
+y1 <- sum(data$price[data$renovated == 1] * weight_t) / nrow(data)
+
+# Calculate Y0 (untreated outcome)
+y0 <- sum(data$price[data$renovated == 0] * weight_nt) / nrow(data)
+
+# Calculate ATE
+ate <- mean(data$weight * data$price)
+
+# Print results
+cat("Y1:", y1, "\n")
+cat("Y0:", y0, "\n")
+cat("ATE:", ate, "\n")
+
+```
+
+
+```{r}
+data[sample(nrow(data), replace = TRUE), ]
+```
+
+```{r}
+# Load necessary libraries
+library(tidyverse)
+library(MatchIt)  # for propensity score matching
+
+# Example dataset
+# Assume 'data' is your dataset with columns: price, renovation (1 = renovated, 0 = not renovated),
+# grade, zone, perfect_condition
+# data <- read.csv("your_data.csv")  # Uncomment this line if you have your dataset
+
+# Step 1: Fit a Propensity Score Model using logistic regression
+# We predict the probability of renovation (treatment) based on grade, zone, and perfect_condition.
+
+data$month <- as.factor(data$month)
+data$quartile_zone <- as.factor(data$quartile_zone)
+data$price_scaled <- data$price / 1000
+
+ps_model <- glm(renovated ~ grade + quartile_zone + perfect_condition + nice_view +
+                           living_in_m2 +bedrooms+ real_bathrooms+ month, data, family = binomial)
+
+# Step 2: Calculate the propensity scores
+data$propensity_score <- predict(ps_model, type = "response")
+
+
+# Step 3: Estimate the treatment effect of renovation on price using matching
+# We will use propensity score matching to compare renovated vs non-renovated houses.
+
+
+
+
+
+# Step 6: Visualize the results
+# You can plot the distribution of propensity scores for treated and control groups
+ggplot(data, aes(x = propensity_score, color = factor(renovated))) +
+  geom_density() +
+  labs(title = "Distribution of Propensity Scores by Renovation Status",
+       x = "Propensity Score", 
+       y = "Density") +
+  theme_minimal()
+
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Example data frame
+
+
+# Fit the linear model
+m <- lm(price ~ renovated + living_in_m2, data = data)
+
+# Create a new data frame with fitted values
+plt_df <- data %>%
+  mutate(y_hat = fitted(m))
+
+# Generate the plot
+ggplot(data = plt_df, aes(x = living_in_m2)) +
+  geom_line(data = filter(plt_df, renovated == 1), 
+            aes(y = y_hat, color = "T=1"), size = 1) +
+  geom_line(data = filter(plt_df, renovated == 0), 
+            aes(y = y_hat, color = "T=0"), size = 1) +
+  labs(title = paste("E[T=1|living_in_m2] - E[T=0|living_in_m2] =", 
+                     round(coef(m)["renovated"], 2)),
+       x = "Living Area (m²)", 
+       y = "Price", 
+       color = "Renovation Status") +
+  scale_color_manual(values = c("T=1" = "blue", "T=0" = "red")) +
+  theme_minimal()
+summary(m)
+```
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Example data frame
+
+
+# Fit the linear model
+m <- lm(price ~ renovated + grade, data = data)
+
+# Create a new data frame with fitted values
+plt_df <- data %>%
+  mutate(y_hat = fitted(m))
+
+# Generate the plot
+ggplot(data = plt_df, aes(x = grade)) +
+  geom_line(data = filter(plt_df, renovated == 1), 
+            aes(y = y_hat, color = "T=1"), size = 1) +
+  geom_line(data = filter(plt_df, renovated == 0), 
+            aes(y = y_hat, color = "T=0"), size = 1) +
+  labs(title = paste("E[T=1|grade] - E[T=0|grade] =", 
+                     round(coef(m)["renovated"], 2)),
+       x = "grade", 
+       y = "Price", 
+       color = "Renovation Status") +
+  scale_color_manual(values = c("T=1" = "blue", "T=0" = "red")) +
+  theme_minimal()
+summary(m)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
