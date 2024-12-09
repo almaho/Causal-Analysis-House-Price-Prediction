@@ -1,0 +1,209 @@
+---
+title: "Interactions"
+output: html_document
+date: "2024-12-05"
+---
+
+
+```{r}
+library(readr)
+
+# Define the path to the CSV file in the "arxiv" folder
+file_path <- file.path("data", "df_train.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_train <- read_csv(file_path)
+file_path2 <- file.path("data", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_test <- read_csv(file_path2)
+
+# Display the first few rows of the data
+print(data_train)
+```
+
+
+
+
+
+
+
+
+```{r}
+library(dplyr)
+
+#dplyr::filter()  # For the 'filter' function in dplyr
+#stats::filter()  # For the 'filter' function in stats
+#base::union()    # For the 'union' function in base R
+
+
+# Convert specific columns to factors with labels "0" and "1"
+dataset_train <- data_train %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+
+dataset_test <- data_test %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+if (!requireNamespace("lubridate", quietly = TRUE)) {
+  install.packages("lubridate")
+}
+library(lubridate)
+
+
+
+dataset_test <- dataset_test %>%
+  mutate(date = as.numeric(date))  # Converts 'date' column to numeric (days since 1970-01-01)
+
+dataset_train <- dataset_train %>%
+  mutate(date = as.numeric(date)) 
+```
+```{r}
+head(dataset_train)
+```
+
+```{r}
+dataset_train$month <- as.factor(dataset_train$month)
+dataset_train$quartile_zone <- as.factor(dataset_train$quartile_zone)
+dataset_train$grade <- as.factor(dataset_train$grade)
+dataset_train$price_scaled <- dataset_train$price / 1000
+
+
+```
+
+
+
+
+```{r}
+
+
+data <- dataset_train
+features = c("has_basement", "renovated", "nice_view", "perfect_condition", "has_lavatory", "single_floor","bedrooms" , "grade" ,  "living_in_m2",   
+                    "real_bathrooms"  , 
+                  "month" ,"quartile_zone", "price")
+data <- data %>%
+  mutate(across(where(is.factor), as.numeric)) 
+
+#%>%  # Convert factors to numeric
+#  mutate(across(all_of(features), ~ (. - mean(.)) / sd(.), .names = "norm_{col}"))
+
+# List of original numeric features
+numeric_features <- c( 
+                      "living_in_m2")
+
+# Normalize the original numeric features
+#data <- normalize_features(data, numeric_features)
+```
+
+
+
+
+```{r}
+head(data)
+```
+
+
+
+```{r}
+library(ggplot2)
+
+# Plot with two boxplots for each grade, separated by `nice_view`
+ggplot(data, aes(x = factor(nice_view), y = price, fill = factor(nice_view))) +
+  geom_boxplot() +
+  facet_wrap(~ grade) +
+  labs(
+    title = "Boxplots of Price by Nice View and Grade",
+    x = "Nice View (0 = No, 1 = Yes)",
+    y = "Price",
+    fill = "Nice View"
+  ) +
+  theme_minimal()
+
+```
+
+```{r}
+
+# Define the models
+model_main <- lm(price ~ nice_view + grade, data = data)
+model_interaction <- lm(price ~ nice_view * grade, data = data) # Includes interaction
+
+# Perform the F-test
+anova_result <- anova(model_main, model_interaction)
+
+# Extract required statistics
+sse_main <- sum(residuals(model_main)^2)  # SSE for the main effects model
+sse_interaction <- sum(residuals(model_interaction)^2)  # SSE for the interaction model
+
+df_main <- df.residual(model_main)  # Degrees of freedom for the main effects model
+df_interaction <- df.residual(model_interaction)  # Degrees of freedom for the interaction model
+
+f_stat <- ((sse_main - sse_interaction) / (df_main - df_interaction)) /
+          (sse_interaction / df_interaction)
+
+# Critical F value
+alpha <- 0.05  # Significance level
+f_critical <- qf(1 - alpha, df_main - df_interaction, df_interaction)
+
+# Compare F-statistic with F-critical
+cat("F-Statistic:", f_stat, "\n")
+cat("F-Critical:", f_critical, "\n")
+
+if (f_stat > f_critical) {
+  cat("Reject the null hypothesis: Interaction effects are significant.\n")
+} else {
+  cat("Fail to reject the null hypothesis: No significant interaction effects.\n")
+}
+
+# For a detailed anova table:
+print(anova_result)
+
+```
+
+
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Example dataset
+# Ensure `bedrooms` is treated as a factor for proper categorization
+data <- data %>%
+  mutate(bedrooms = as.factor(bedrooms))
+
+# Plot interaction
+ggplot(data, aes(x = living_in_m2, y = price, color = bedrooms)) +
+  geom_smooth(method = "lm", se = FALSE) +  # Add regression lines for each bedroom category
+  labs(title = "Interaction between Living Area and Bedrooms on Price",
+       x = "Living Area (m²)",
+       y = "Price",
+       color = "Number of Bedrooms") +
+  theme_minimal()
+``` 
+```{r}
+library(ggplot2)
+library(dplyr)
+
+# Example dataset
+# Ensure `bedrooms` is treated as a factor for proper categorization
+data <- data %>%
+  mutate(grade = as.factor(grade))
+
+# Plot interaction
+ggplot(data, aes(x = living_in_m2, y = price, color = grade)) +
+  geom_smooth(method = "lm", se = FALSE) +  # Add regression lines for each bedroom category
+  labs(title = "Interaction between Living Area and grade on Price",
+       x = "Living Area (m²)",
+       y = "Price",
+       color = "grade") +
+  theme_minimal()
+``` 
+
+
+```{r}
+model_interaction <- lm(price ~  living_in_m2 * grade, data = data)
+
+summary(model_interaction)
+```
