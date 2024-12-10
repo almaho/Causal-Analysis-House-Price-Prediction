@@ -1,0 +1,1289 @@
+---
+title: "Project"
+output: html_document
+date: "2024-11-16"
+---
+
+## Read Data
+
+```{r}
+library(readr)
+
+# Define the path to the CSV file in the "arxiv" folder
+file_path <- file.path("data", "df_train.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_train <- read_csv(file_path)
+file_path2 <- file.path("data", "df_test.csv")  # Replace 'your_file.csv' with the actual file name
+
+# Read the CSV file
+data_test <- read_csv(file_path2)
+
+# Display the first few rows of the data
+print(data_train)
+```
+
+## Preprocessing
+
+```{r}
+library(dplyr)
+
+#dplyr::filter()  # For the 'filter' function in dplyr
+#stats::filter()  # For the 'filter' function in stats
+#base::union()    # For the 'union' function in base R
+
+# Convert specific columns to factors with labels "0" and "1"
+dataset_train <- data_train %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+
+dataset_test <- data_test %>%
+  mutate(across(
+    c(has_basement, renovated, nice_view, perfect_condition, has_lavatory, single_floor),
+    ~ factor(., labels = c(0, 1))
+  ))
+if (!requireNamespace("lubridate", quietly = TRUE)) {
+  install.packages("lubridate")
+}
+library(lubridate)
+
+
+
+dataset_test <- dataset_test %>%
+  mutate(date = as.numeric(date))  # Converts 'date' column to numeric (days since 1970-01-01)
+
+dataset_train <- dataset_train %>%
+  mutate(date = as.numeric(date)) 
+```
+
+```{r}
+
+# Replace non-numeric columns in-place
+dataset_train <- dataset_train %>%
+  mutate(across(everything(), ~ as.numeric(as.character(.))))
+
+# Check for remaining non-numeric columns
+non_numeric_cols <- sapply(dataset_train, function(col) !is.numeric(col))
+if (any(non_numeric_cols)) {
+  print("Non-numeric columns remain:")
+  print(names(dataset_train)[non_numeric_cols])
+} else {
+  print("All columns are now numeric.")
+}
+
+print(dataset_train)
+```
+
+## Correlation matrix
+
+```{r}
+# Install and load ggcorrplot
+if (!requireNamespace("ggcorrplot", quietly = TRUE)) {
+  install.packages("ggcorrplot")
+}
+library(ggcorrplot)
+
+# Assuming your dataset is named `dataset_train`
+# Calculate the correlation matrix (only numeric columns)
+cor_matrix <- cor(dataset_train)
+
+# Plot the correlation matrix with adjusted sizes
+ggcorrplot(
+  cor_matrix,
+  lab = TRUE,               # Show correlation coefficients
+  lab_size = 2,             # Larger label size for numbers in the cells
+  tl.cex = 8,              # Larger text label size for axis labels
+  colors = c("red", "white", "blue"), # Custom color palette
+  title = "Correlation Matrix"
+)
+
+
+```
+
+## Correlation of different features
+
+```{r}
+ggplot(dataset_train, aes(x = grade, y = living_in_m2, fill = as.factor(grade))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "Living Space by grade",
+    x = "grade",
+    y = "living_space",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+
+```
+
+```{r}
+library(ggplot2)
+#install.packages("viridis")
+
+library(viridis)
+
+ggplot(dataset_train, aes(x = bedrooms, y = living_in_m2, fill = as.factor(bedrooms))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "Living Space by Number of Bedrooms",
+    x = "Number of Bedrooms",
+    y = "Living Space (m²)",
+    fill = "Bedrooms"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = grade, y = bedrooms, fill = as.factor(grade))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "bedrooms by grade",
+    x = "grade",
+    y = "bedrooms",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = grade, y = price, fill = as.factor(grade))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by grade",
+    x = "grade",
+    y = "price",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = bedrooms, y = price, fill = as.factor(bedrooms))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by bedrooms",
+    x = "bedroooms",
+    y = "price",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = real_bathrooms, y = price, fill = as.factor(real_bathrooms))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by bathrooms",
+    x = "bathroom",
+    y = "price",
+    fill = "grade"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = nice_view, y = price, fill = as.factor(nice_view))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by nice view",
+    x = "nice view",
+    y = "price",
+    fill = "nice view"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+```{r}
+
+ggplot(dataset_train, aes(x = quartile_zone, y = price, fill = as.factor(quartile_zone))) +
+  geom_bar(stat = "summary", fun = "mean", position = "dodge") +  # Change to bar chart
+  scale_fill_viridis_d(option = "C") +                           # Use a Viridis color palette
+  labs(
+    title = "price by zone",
+    x = "zone",
+    y = "price",
+    fill = "zone"
+  ) +
+  theme_minimal() +                                              # Change the theme for a cleaner look
+  theme(
+    plot.title = element_text(hjust = 0.5, size = 16),           # Center and enlarge the title
+    axis.text = element_text(size = 12),                        # Enlarge axis text
+    axis.title = element_text(size = 14),                       # Enlarge axis titles
+    legend.position = "right"                                   # Move legend to the right
+  )
+```
+
+## What features are better to choose? 
+
+### AIC
+
+```{r}
+library(MASS)
+library(glmnet)
+
+model <- lm(price ~ ., data = dataset_train)
+step <- stepAIC(model, direction = "both")
+summary(step)
+```
+
+### Lasso and Ridge 
+```{r}
+x <- model.matrix(price ~ ., dataset_train)[,-1]
+y <- dataset_train$price
+lasso_model <- cv.glmnet(x, y, alpha = 1) # Lasso
+ridge_model <- cv.glmnet(x, y, alpha = 0) # Ridge
+
+lasso_model
+print("-------------------------------------------------")
+ridge_model
+print("-------------------------------------------------")
+
+```
+
+### Lasso and Ridge - Ranked features
+
+```{r}
+# Load required library
+library(glmnet)
+
+# Assuming `dataset` is your data frame
+# Extract the predictor matrix (X) and response variable (y)
+X <- model.matrix(price ~ ., dataset_train)[, -1]  # Exclude the intercept
+y <- dataset_train$price
+
+# Ridge Regression (alpha = 0)
+set.seed(123)  # For reproducibility
+ridge_model <- cv.glmnet(X, y, alpha = 0)  # Cross-validation for Ridge
+ridge_best_lambda <- ridge_model$lambda.min  # Best lambda for Ridge
+
+# Extract coefficients for the best lambda in Ridge
+ridge_coefficients <- as.matrix(coef(ridge_model, s = ridge_best_lambda))  # Convert to matrix
+ridge_scores <- abs(ridge_coefficients[, 1])  # Absolute values of coefficients
+ridge_ranked_features <- data.frame(Feature = rownames(ridge_coefficients), Score = ridge_scores)
+
+# Lasso Regression (alpha = 1)
+set.seed(123)  # For reproducibility
+lasso_model <- cv.glmnet(X, y, alpha = 1)  # Cross-validation for Lasso
+lasso_best_lambda <- lasso_model$lambda.min  # Best lambda for Lasso
+
+# Extract coefficients for the best lambda in Lasso
+lasso_coefficients <- as.matrix(coef(lasso_model, s = lasso_best_lambda))  # Convert to matrix
+lasso_scores <- abs(lasso_coefficients[, 1])  # Absolute values of coefficients
+lasso_ranked_features <- data.frame(Feature = rownames(lasso_coefficients), Score = lasso_scores)
+
+# Remove intercept from rankings
+ridge_ranked_features <- ridge_ranked_features[ridge_ranked_features$Feature != "(Intercept)", ]
+lasso_ranked_features <- lasso_ranked_features[lasso_ranked_features$Feature != "(Intercept)", ]
+
+# Sort features by score in descending order
+ridge_ranked_features <- ridge_ranked_features[order(-ridge_ranked_features$Score), ]
+lasso_ranked_features <- lasso_ranked_features[order(-lasso_ranked_features$Score), ]
+
+# Select top 50% of features
+ridge_top_features <- ridge_ranked_features[1:floor(nrow(ridge_ranked_features) / 2), ]
+lasso_top_features <- lasso_ranked_features[1:floor(nrow(lasso_ranked_features) / 2), ]
+
+# Print Results
+print("Top 50% Features by Ridge Regression:\n")
+print(ridge_top_features)
+
+print("\nTop 50% Features by Lasso Regression:\n")
+print(lasso_top_features)
+```
+
+### Greedy algorithm for feature selection
+```{r}
+# Greedy algorithm for feature selection based on adjusted R-squared
+greedy_feature_selection <- function(data, target_var) {
+  # Initialize variables
+  features <- setdiff(names(data), target_var)  # All features except target
+  selected_features <- c()  # Empty set of selected features
+  adj_r_squared_list <- c()  # Store adjusted R-squared at each step
+  feature_order <- c()  # Store the order in which features are added
+  
+  # Iterate until all features are considered
+  while (length(features) > 0) {
+    best_adj_r_squared <- -Inf
+    best_feature <- NULL
+    
+    # Try adding each feature not in selected_features
+    for (feature in features) {
+      current_features <- c(selected_features, feature)
+      formula <- as.formula(paste(target_var, "~", paste(current_features, collapse = " + ")))
+      model <- lm(formula, data = data)
+      adj_r_squared <- summary(model)$adj.r.squared
+      
+      # Update best feature if adjusted R-squared improves
+      if (adj_r_squared > best_adj_r_squared) {
+        best_adj_r_squared <- adj_r_squared
+        best_feature <- feature
+      }
+    }
+    
+    # Update selected features and remaining features
+    selected_features <- c(selected_features, best_feature)
+    features <- setdiff(features, best_feature)
+    
+    # Store results
+    adj_r_squared_list <- c(adj_r_squared_list, best_adj_r_squared)
+    feature_order <- c(feature_order, best_feature)
+  }
+  
+  # Combine results into a data frame
+  result <- data.frame(
+    Step = 1:length(feature_order),
+    Feature_Added = feature_order,
+    Adjusted_R_Squared = adj_r_squared_list
+  )
+  
+  return(result)
+}
+
+# Apply the greedy feature selection function
+# Replace 'dataset' with your actual dataset and 'price' with your target variable
+print(names(dataset_train))
+result <- greedy_feature_selection(data = dataset_train, target_var = "price")
+
+# Display the results
+print(result)
+```
+
+### Greedy algorithm - adding squared variables to the model
+```{r}
+# Greedy algorithm for feature selection considering original and squared versions
+greedy_feature_selection_all <- function(data, target_var) {
+  # Initialize variables
+  features <- setdiff(names(data), target_var)  # All features except the target
+  selected_features <- c()  # Empty set of selected features
+  adj_r_squared_list <- c()  # Store adjusted R-squared at each step
+  feature_order <- c()  # Store the order in which features are added
+  
+  # Add squared versions of features to the dataset
+  for (feature in features) {
+    data[[paste0(feature, "_squared")]] <- data[[feature]]^2
+  }
+  all_features <- c(features, paste0(features, "_squared"))  # Original + squared versions
+  
+  # Greedy selection process
+  while (length(all_features) > 0) {
+    best_adj_r_squared <- -Inf
+    best_feature <- NULL
+    
+    # Try adding each feature not yet in the selected set
+    for (feature in all_features) {
+      current_features <- c(selected_features, feature)
+      formula <- as.formula(paste(target_var, "~", paste(current_features, collapse = " + ")))
+      model <- lm(formula, data = data)
+      adj_r_squared <- summary(model)$adj.r.squared
+      
+      # Update the best feature if adjusted R-squared improves
+      if (adj_r_squared > best_adj_r_squared) {
+        best_adj_r_squared <- adj_r_squared
+        best_feature <- feature
+      }
+    }
+    
+    # Update selected features and remaining features
+    selected_features <- c(selected_features, best_feature)
+    all_features <- setdiff(all_features, best_feature)  # Remove selected feature
+    
+    # Store results
+    adj_r_squared_list <- c(adj_r_squared_list, best_adj_r_squared)
+    feature_order <- c(feature_order, best_feature)
+  }
+  
+  # Combine results into a data frame
+  result <- data.frame(
+    Step = 1:length(feature_order),
+    Feature_Added = feature_order,
+    Adjusted_R_Squared = adj_r_squared_list
+  )
+  
+  return(result)
+}
+
+# Apply the greedy feature selection function
+# Replace 'dataset' with your actual dataset and 'price' with your target variable
+result <- greedy_feature_selection_all(data = dataset_train, target_var = "price")
+
+# Display the results
+print(result)
+
+```
+
+
+### Greedy for interaction terms
+```{r}
+
+dataset_train_copy <- dataset_train
+# Define the greedy feature selection function for interaction terms
+greedy_interaction_selection <- function(data, target_var, base_features, num_interactions = 3) {
+  # Initialize variables
+  selected_interactions <- c()  # Store selected interaction terms
+  adj_r_squared_list <- c()  # Store adjusted R-squared at each step
+  
+  # Create all pairwise interaction terms
+  feature_pairs <- combn(base_features, 2, simplify = FALSE)
+  
+  # Initial full model with base features
+  base_formula <- as.formula(paste(target_var, "~", paste(base_features, collapse = " + ")))
+  base_model <- lm(base_formula, data = data)
+  best_adj_r_squared <- summary(base_model)$adj.r.squared
+  
+  # Record the base model
+  adj_r_squared_list <- c(adj_r_squared_list, best_adj_r_squared)
+  selected_interactions <- c(selected_interactions, "No Interaction")
+  
+  # Iterate to add interaction terms
+  for (i in 1:num_interactions) {
+    best_interaction <- NULL
+    
+    # Try adding each interaction term
+    for (pair in feature_pairs) {
+      interaction_term <- paste(pair[1], "*", pair[2])
+      current_formula <- as.formula(
+        paste(target_var, "~", paste(base_features, collapse = " + "), 
+              "+", paste(c(selected_interactions[-1], interaction_term), collapse = " + "))
+      )
+      model <- lm(current_formula, data = data)
+      adj_r_squared <- summary(model)$adj.r.squared
+      
+      # Update the best interaction term
+      if (adj_r_squared > best_adj_r_squared) {
+        best_adj_r_squared <- adj_r_squared
+        best_interaction <- interaction_term
+      }
+    }
+    
+    # Update the selected interactions and remove the best pair
+    selected_interactions <- c(selected_interactions, best_interaction)
+    feature_pairs <- feature_pairs[!sapply(feature_pairs, function(x) paste(x, collapse = "*") == best_interaction)]
+    
+    # Store results
+    adj_r_squared_list <- c(adj_r_squared_list, best_adj_r_squared)
+  }
+  
+  # Combine results into a data frame
+  result <- data.frame(
+    Step = 0:num_interactions,
+    Interaction_Added = selected_interactions,
+    Adjusted_R_Squared = adj_r_squared_list
+  )
+  
+  return(result)
+}
+
+# Define the base features (original features in the dataset)
+base_features <- setdiff(names(dataset_train), c("price", "date"))
+
+# Apply the greedy interaction selection function
+result <- greedy_interaction_selection(data = dataset_train, target_var = "price", base_features = base_features)
+
+# Display the results
+print(result)
+
+```
+
+### Greedy algorithm for interaction terms - (This section is wrong)
+```{r}
+# Greedy algorithm for interaction term selection
+greedy_feature_selection_interactions <- function(data, target_var, current_features) {
+  # Initialize variables
+  features <- current_features  # Features already selected
+  interaction_terms <- combn(features, 2, simplify = FALSE)  # All pairs of features
+  adj_r_squared_list <- c()  # Store adjusted R-squared at each step
+  interaction_order <- c()  # Store the order in which interaction terms are added
+  
+  # Greedy selection process for interaction terms
+  while (length(interaction_terms) > 0) {
+    best_adj_r_squared <- -Inf
+    best_interaction <- NULL
+    
+    # Try adding each interaction term
+    for (interaction in interaction_terms) {
+      # Create interaction term
+      interaction_name <- paste0(interaction[1], "_x_", interaction[2])
+      data[[interaction_name]] <- data[[interaction[1]]] * data[[interaction[2]]]
+      
+      # Fit the model with the new interaction term
+      formula <- as.formula(paste(
+        target_var, "~", paste(features, collapse = " + "), "+", interaction_name
+      ))
+      model <- lm(formula, data = data)
+      adj_r_squared <- summary(model)$adj.r.squared
+      
+      # Update the best interaction if adjusted R-squared improves
+      if (adj_r_squared > best_adj_r_squared) {
+        best_adj_r_squared <- adj_r_squared
+        best_interaction <- interaction
+      }
+    }
+    
+    # Update selected interactions and remove from the pool
+    if (!is.null(best_interaction)) {
+      interaction_name <- paste0(best_interaction[1], "_x_", best_interaction[2])
+      features <- c(features, interaction_name)
+      interaction_order <- c(interaction_order, interaction_name)
+      adj_r_squared_list <- c(adj_r_squared_list, best_adj_r_squared)
+      
+      # Remove the selected interaction from the pool
+      interaction_terms <- interaction_terms[!sapply(interaction_terms, function(x) all(x %in% best_interaction))]
+    } else {
+      break  # Stop if no improvement
+    }
+  }
+  
+  # Combine results into a data frame
+  result <- data.frame(
+    Step = 1:length(interaction_order),
+    Interaction_Added = interaction_order,
+    Adjusted_R_Squared = adj_r_squared_list
+  )
+  
+  return(result)
+}
+
+# Example Usage
+# Assuming 'dataset' is your data frame and 'price' is the target variable
+# Assuming `current_features` is a list of features already selected in the current model
+current_features <- c("nice_view", "quartile_zone", "perfect_condition", "renovated", "grade", "has_basement")
+result <- greedy_feature_selection_interactions(data = dataset_train, target_var = "price", current_features = current_features)
+
+# Display the results
+print(result)
+```
+
+
+### Randomly using some features as original, squared, and interaction, in the model
+```{r}
+# Define the selected features
+selected_original_features <- c("nice_view", "quartile_zone", "perfect_condition", "renovated", "grade", "has_basement")
+
+# Define the selected squared features
+selected_squared_features <- c("living_in_m2_squared", "perfect_condition_squared")
+
+# Define the selected interaction terms
+selected_interaction_terms <- c("grade_x_nice_view", "grade_x_quartile_zone", "renovated_x_grade", "perfect_condition_x_grade")
+
+# Add interaction terms to the dataset
+for (interaction in selected_interaction_terms) {
+  features <- unlist(strsplit(interaction, "_x_"))
+  dataset_train[[interaction]] <- dataset_train[[features[1]]] * dataset_train[[features[2]]]
+}
+
+# Add squared terms to the dataset
+for (squared_feature in selected_squared_features) {
+  original_feature <- gsub("_squared", "", squared_feature)
+  dataset_train[[squared_feature]] <- dataset_train[[original_feature]]^2
+}
+
+# Combine all selected features
+all_selected_features <- c(selected_original_features, selected_squared_features, selected_interaction_terms)
+
+# Create the formula for the final regression model
+final_formula <- as.formula(paste("price ~", paste(all_selected_features, collapse = " + ")))
+
+# Fit the Multiple Linear Regression model
+final_model <- lm(final_formula, data = dataset_train)
+
+# Display the model summary
+summary(final_model)
+```
+
+
+### Compare Lasso, Ridge, and All features MLR models
+
+```{r}
+mlr_model_all <- lm(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+                  perfect_condition + real_bathrooms + has_lavatory + single_floor +
+                  month + quartile_zone, data = dataset_train)
+
+mlr_model_all_without_month <- lm(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+                  perfect_condition + real_bathrooms + has_lavatory + single_floor +
+                  quartile_zone, data = dataset_train)
+
+mlr_model_ridge <- lm(price ~ nice_view + quartile_zone + perfect_condition + renovated + grade + has_basement, data = dataset_train)
+
+mlr_model_lasso <- lm(price ~ nice_view + quartile_zone + perfect_condition + renovated + grade + has_lavatory, data = dataset_train)
+
+summary(mlr_model_all)
+print("-------------------------------------------------------------")
+summary(mlr_model_all_without_month)
+print("-------------------------------------------------------------")
+summary(mlr_model_ridge)
+print("-------------------------------------------------------------")
+summary(mlr_model_lasso)
+
+```
+
+
+### Previous parts
+#### Model Summary (IDK anything about this part)
+
+```{r}
+
+# Residuals vs Fitted Plot
+plot(mlr_model_all, which = 1, main = "Residuals vs Fitted")
+
+# Normal Q-Q Plot
+plot(mlr_model_all, which = 2, main = "Normal Q-Q")
+
+# Histogram of Residuals
+hist(residuals(mlr_model_all), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+
+```
+
+There is a slight curve in the Residuals vs Fitted Plot suggeesting that the model is missing some non-linear relationships.
+
+Deviations at the Ends in the QQ plot suggests suggest skewness or heavy tails in the residuals.
+
+#### Instrumental Variables (IV)
+
+```{r}
+# Ensure renovated is numeric
+dataset_train$renovated <- as.numeric(as.character(dataset_train$renovated))
+
+# First Stage Regression
+first_stage_model <- lm(renovated ~ grade + quartile_zone, data = dataset_train)
+
+# Display summary of the first stage regression
+summary(first_stage_model)
+```
+
+```{r}
+# Add predicted values of renovated from the first stage
+dataset_train$hat_R <- predict(first_stage_model)
+
+# Second Stage Regression
+second_stage_model <- lm(price ~ bedrooms + grade + hat_R + nice_view +
+                           living_in_m2 + perfect_condition + quartile_zone, 
+                         data = dataset_train)
+
+# Display summary of the second stage regression
+summary(second_stage_model)
+```
+
+#### Interpretation
+
+-   **Residual Standard Error (RSE)**: 0.01687\
+    This indicates a close fit of the model to the data, with small residuals overall.
+
+-   **Multiple R-squared**: 0.7565\
+    Approximately 75.65% of the variation in house prices is explained by the predictors in the model.
+
+-   **Adjusted R-squared**: 0.7564\
+    This value accounts for the number of predictors in the model, confirming a strong fit even when adjusted for complexity.
+
+-   **F-statistic**: 5279 (p \< 2.2e-16)\
+    The F-statistic is highly significant, suggesting that the model explains a substantial portion of the variation in house prices.
+
+The second-stage regression demonstrates that the instrumented variable `hat_R` (renovation status) has a strong positive effect on house prices, supporting the hypothesis that renovations increase property value. All other variables are statistically significant, and the model explains a large portion of the variance in house prices. The results suggest that the instrumented renovations are indeed a key determinant of house prices, and the IV method provides a reliable estimate of their causal effect.
+
+```{r}
+plot(second_stage_model, which = 1, main = "Residuals vs Fitted")
+plot(second_stage_model, which = 2, main = "Normal Q-Q")
+hist(residuals(second_stage_model), breaks = 30, main = "Histogram of Residuals", xlab = "Residuals")
+
+```
+
+Both the residuals vs. fitted plot and the Q-Q plot suggest that the model might benefit from further refinement. The curvature in the residuals suggests possible non-linear relationships, while the non-normality of the residuals indicates the need for additional steps to improve the model fit and the validity of the estimates.
+
+
+
+## Fixed-Effects Model
+
+### 1
+```{r}
+library(dplyr)
+
+# Reset dataset
+dataset_train <- dataset_train_copy
+
+# Step 1: Compute group means by month
+group_means_month <- dataset_train %>%
+  group_by(month) %>%
+  summarise(
+    mean_price = mean(price, na.rm = TRUE),
+    mean_bedrooms = mean(bedrooms, na.rm = TRUE),
+    mean_grade = mean(grade, na.rm = TRUE),
+    mean_living_in_m2 = mean(living_in_m2, na.rm = TRUE),
+    mean_real_bathrooms = mean(real_bathrooms, na.rm = TRUE)
+  )
+
+# Step 2: Join group means back to the dataset
+dataset_train <- dataset_train %>%
+  left_join(group_means_month, by = "month")
+
+# Step 3: De-mean variables
+dataset_train <- dataset_train %>%
+  mutate(
+    price_demeaned = price - mean_price,
+    bedrooms_demeaned = bedrooms - mean_bedrooms,
+    grade_demeaned = grade - mean_grade,
+    living_in_m2_demeaned = living_in_m2 - mean_living_in_m2,
+    real_bathrooms_demeaned = real_bathrooms - mean_real_bathrooms
+  )
+
+# Check for missing values and filter complete cases
+dataset_train <- dataset_train %>%
+  filter(complete.cases(.))
+
+# Step 4: Compute coefficients manually using de-meaned variables
+compute_fixed_effect_coefficient <- function(x_demeaned, y_demeaned) {
+  # Compute Covariance(X-X_bar, Y-Y_bar)
+  cov_xy <- cov(x_demeaned, y_demeaned, use = "complete.obs")
+  
+  # Compute Variance(X-X_bar)
+  var_x <- var(x_demeaned, na.rm = TRUE)
+  
+  # Compute beta
+  beta <- cov_xy / var_x
+  return(beta)
+}
+
+# Step 1: Compute fixed effects coefficients (from the previous step)
+coefficients <- data.frame(
+  Variable = c("bedrooms", "grade", "living_in_m2", "real_bathrooms"),
+  Beta = c(
+    compute_fixed_effect_coefficient(dataset_train$bedrooms_demeaned, dataset_train$price_demeaned),
+    compute_fixed_effect_coefficient(dataset_train$grade_demeaned, dataset_train$price_demeaned),
+    compute_fixed_effect_coefficient(dataset_train$living_in_m2_demeaned, dataset_train$price_demeaned),
+    compute_fixed_effect_coefficient(dataset_train$real_bathrooms_demeaned, dataset_train$price_demeaned)
+  )
+)
+
+# Extract betas
+beta_bedrooms <- coefficients$Beta[coefficients$Variable == "bedrooms"]
+beta_grade <- coefficients$Beta[coefficients$Variable == "grade"]
+beta_living_in_m2 <- coefficients$Beta[coefficients$Variable == "living_in_m2"]
+beta_real_bathrooms <- coefficients$Beta[coefficients$Variable == "real_bathrooms"]
+
+# Step 2: Compute alphas for each month
+alphas <- group_means_month %>%
+  mutate(
+    alpha = mean_price -
+      beta_bedrooms * mean_bedrooms -
+      beta_grade * mean_grade -
+      beta_living_in_m2 * mean_living_in_m2 -
+      beta_real_bathrooms * mean_real_bathrooms
+  )
+
+# Step 3: Report the alphas
+print("Fixed effects (alphas) for each month:")
+print(alphas[, c("month", "alpha")])
+
+#comparison_month <- data.frame(
+ # Metric = names(base_model_metrics),
+  #Base_Model = base_model_metrics,
+  #Fixed_Effect_Model_Month = fixed_effect_model_month_metrics
+#)
+
+# Display the comparison
+#print(comparison_month)
+
+```
+
+
+### basic model
+```{r}
+# try a basic model
+# feature: Only living_in_m2 and month
+# target: price
+
+# simple MLR:
+simple_mlr <- lm(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+                  perfect_condition + real_bathrooms + has_lavatory + single_floor +
+                  month + quartile_zone, data = dataset_train)
+print(summary(simple_mlr)$adj.r.squared)
+
+# fixed effect MLR
+dataset_train <- dataset_train_copy
+
+group_means_month <- dataset_train %>%
+  group_by(month) %>%
+  summarise(
+    mean_price = mean(price, na.rm = TRUE),
+    mean_living_in_m2 = mean(living_in_m2, na.rm = TRUE)
+  )
+
+dataset_train <- dataset_train %>%
+  left_join(group_means_month, by = "month")
+
+dataset_train <- dataset_train %>%
+  mutate(
+    price_demeaned = price - mean_price,
+    living_in_m2_demeaned = living_in_m2 - mean_living_in_m2  
+  )
+
+dataset_train <- dataset_train %>%
+  filter(complete.cases(.))
+
+compute_fixed_effect_coefficient <- function(x_demeaned, y_demeaned) {
+  cov_xy <- cov(x_demeaned, y_demeaned, use = "complete.obs")
+  var_x <- var(x_demeaned, na.rm = TRUE)
+  beta <- cov_xy / var_x
+  return(beta)
+}
+
+coefficients <- data.frame(
+  Variable = c("living_in_m2"),
+  Beta = c(
+    compute_fixed_effect_coefficient(dataset_train$living_in_m2_demeaned, dataset_train$price_demeaned)
+  )
+)
+
+# Corrected Line
+beta_living_in_m2 <- coefficients$Beta[coefficients$Variable == "living_in_m2"]
+
+alphas <- group_means_month %>%
+  mutate(
+    alpha = mean_price - beta_living_in_m2 * mean_living_in_m2
+  )
+
+n <- nrow(dataset_train)  # Number of observations
+k <- ncol(dataset_train[, c("price_demeaned", "living_in_m2_demeaned")])  # Number of predictors
+
+r2_fixed_effect <- var(dataset_train$price_demeaned - mean(dataset_train$price_demeaned, na.rm = TRUE)) /
+                   var(dataset_train$price, na.rm = TRUE)
+
+adj_r2_fixed <- 1 - ((1 - r2_fixed_effect) * ((n - 1) / (n - k - 1)))
+
+# Compare the Adjusted R^2 values
+comparison <- data.frame(
+  Model = c("Base Model (Linear Regression)", "Fixed-Effects Model"),
+  Adj_R2 = c(summary(simple_mlr)$adj.r.squared, adj_r2_fixed)
+)
+
+# Print the comparison
+print(comparison)
+```
+
+
+
+
+```{r}
+
+# Install and load the fixest package if not already installed
+# install.packages("fixest")
+library(fixest)
+
+# Model 1: Simple linear regression (no month and quartile_zone effects)
+model1 <- lm(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+                  perfect_condition + real_bathrooms + has_lavatory + single_floor, data = dataset_train)
+summary_model1 <- summary(model1)
+
+# Model 2: Linear regression with month and quartile zone
+model2 <- lm(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+                  perfect_condition + real_bathrooms + has_lavatory + single_floor +
+                  month + quartile_zone, data = dataset_train)
+summary_model2 <- summary(model2)
+
+# Model 3: Fixed-effects model with month as the fixed effect
+model3 <- feols(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+                  perfect_condition + real_bathrooms + has_lavatory + single_floor | month + quartile_zone, data = dataset_train)
+summary_model3 <- summary(model3)
+
+# Model 4: Fixed-effects model with month as the fixed effect, and interaction term between bedrooms and living_in_m2
+model4 <- feols(
+  price ~ bedrooms * living_in_m2 + grade + has_basement + living_in_m2 + renovated + nice_view +
+    perfect_condition + real_bathrooms + has_lavatory + single_floor | month + quartile_zone,
+  data = dataset_train
+)
+summary_model4 <- summary(model4)
+
+
+# Extract Adjusted R-squared
+adj_r2_model1 <- summary_model1$adj.r.squared
+print(summary_model1)
+adj_r2_model2 <- summary_model2$adj.r.squared
+adj_r2_model3 <- summary_model3$adj.r2
+adj_r2_model4 <- summary_model4$adj.r2
+
+print(adj_r2_model1)
+print(adj_r2_model2)
+print(summary_model3)
+print(summary_model4)
+```
+
+```{r}
+
+# Model 3: Fixed-effects model with month as the fixed effect
+model3 <- feols(price ~ bedrooms + grade + has_basement + living_in_m2 + renovated + nice_view +
+                  perfect_condition + real_bathrooms + has_lavatory + single_floor + quartile_zone | month, data = dataset_train)
+summary(model3)
+```
+
+
+```{r}
+# Normalize living_in_m2
+dataset_train_new <- dataset_train %>%
+  mutate(
+    quartile_zone_normalized = (quartile_zone - mean(quartile_zone, na.rm = TRUE)) / sd(quartile_zone, na.rm = TRUE),
+    living_in_m2_normalized = (living_in_m2 - mean(living_in_m2, na.rm = TRUE)) / sd(living_in_m2, na.rm = TRUE)
+    )
+# MLR with interaction (bedroom * living_in_m2)
+model5 <- feols(log(price) ~ living_in_m2_normalized * quartile_zone_normalized + bedrooms + grade + has_basement + renovated + living_in_m2_normalized + 
+               nice_view + perfect_condition + real_bathrooms + has_lavatory + single_floor | month + quartile_zone_normalized, data = dataset_train_new)
+summary(model5)
+```
+
+```{r}
+# Ensure quartile_zone is a factor
+dataset_train$quartile_zone <- as.factor(dataset_train$quartile_zone)
+
+# Step 1: Fit the Original Model (living_in_m2 and quartile_zone)
+model_original <- lm(price ~ living_in_m2 + factor(quartile_zone), data = dataset_train)
+summary_original <- summary(model_original)
+
+# Extract coefficients for the original model
+b1_original <- coef(summary_original)["living_in_m2", "Estimate"]
+var_b1_original <- coef(summary_original)["living_in_m2", "Std. Error"]^2
+
+# Step 2: Fit the New Model (Add renovation to the original model)
+model_new <- lm(price ~ living_in_m2 + factor(quartile_zone) + renovated, data = dataset_train)
+summary_new <- summary(model_new)
+
+# Extract coefficients for the new model
+b1_new <- coef(summary_new)["living_in_m2", "Estimate"]
+var_b1_new <- coef(summary_new)["living_in_m2", "Std. Error"]^2
+
+# Step 3: Calculate Metrics
+# Compute r12: Correlation between living_in_m2 and renovation (partialed out by quartile_zone)
+residuals_original <- residuals(lm(renovated ~ factor(quartile_zone), data = dataset_train))
+residuals_living_in_m2 <- residuals(lm(living_in_m2 ~ factor(quartile_zone), data = dataset_train))
+r12 <- cor(residuals_original, residuals_living_in_m2, use = "complete.obs")^2  # Squared partial correlation
+
+# Effect on scale of b1 due to adding renovation
+b1_effect <- (b1_original - b1_new) / (1 - r12)
+
+# Step 4: Output Results
+results <- data.frame(
+  Model = c("Original Model: living_in_m2 + quartile_zone", 
+            "New Model: living_in_m2 + quartile_zone + renovated"),
+  b1_Estimate = c(b1_original, b1_new),
+  Variance_b1 = c(var_b1_original, var_b1_new)
+)
+
+print("Effect of Adding Renovation to the Model:")
+print(results)
+
+print("Squared Correlation (r^2) between living_in_m2 and renovated (controlled for quartile_zone):")
+print(r12)
+
+print("Effect on Scale of b1 due to Adding Renovation:")
+print(b1_effect)
+
+```
+
+```{r}
+# Ensure quartile_zone is a factor
+dataset_train$quartile_zone <- as.factor(dataset_train$quartile_zone)
+
+# Step 1: Balance the number of renovated=0 and renovated=1 houses
+renovated_0 <- dataset_train %>% filter(renovated == 0)
+renovated_1 <- dataset_train %>% filter(renovated == 1)
+
+print(nrow(renovated_0))
+print(nrow(renovated_1))
+
+# Sample the larger subset to match the smaller one
+if (nrow(renovated_0) > nrow(renovated_1)) {
+  renovated_0 <- renovated_0 %>% sample_n(nrow(renovated_1))
+} else {
+  renovated_1 <- renovated_1 %>% sample_n(nrow(renovated_0))
+}
+
+# Combine the balanced dataset
+dataset_train_balanced <- bind_rows(renovated_0, renovated_1)
+
+# Step 2: Create subsets based on quartile_zone and living_in_m2 (above/below median)
+dataset_train_balanced <- dataset_train_balanced %>%
+  mutate(
+    living_in_m2_group = ifelse(living_in_m2 > median(living_in_m2, na.rm = TRUE), "High", "Low")
+  )
+
+subsets <- dataset_train_balanced %>%
+  group_by(quartile_zone, living_in_m2_group) %>%
+  group_split()
+
+# Step 3: Fit models and compare Adjusted R^2 for each subset
+results <- lapply(subsets, function(subset) {
+  # Check if factor(quartile_zone) has more than one level
+  if (nlevels(factor(subset$quartile_zone)) < 2) {
+    return(NULL)  # Skip subsets with insufficient levels
+  }
+  
+  # Fit Model 1 (Without renovated)
+  model1 <- lm(price ~ living_in_m2 + factor(quartile_zone), data = subset)
+  adj_r2_model1 <- summary(model1)$adj.r.squared
+  
+  # Fit Model 2 (With renovated)
+  model2 <- lm(price ~ living_in_m2 + factor(quartile_zone) + renovated, data = subset)
+  adj_r2_model2 <- summary(model2)$adj.r.squared
+  
+  # Extract subset info
+  subset_info <- subset %>%
+    summarise(
+      quartile_zone = first(quartile_zone),
+      living_in_m2_group = first(living_in_m2_group)
+    )
+  
+  # Return results
+  data.frame(
+    quartile_zone = subset_info$quartile_zone,
+    living_in_m2_group = subset_info$living_in_m2_group,
+    Adj_R2_Without_Renovated = adj_r2_model1,
+    Adj_R2_With_Renovated = adj_r2_model2,
+    Adj_R2_Improvement = adj_r2_model2 - adj_r2_model1
+  )
+})
+
+print(results)
+
+# Combine results into a single data frame (remove NULL entries)
+experiment_results <- do.call(rbind, results[!sapply(results, is.null)])
+
+# Step 4: Display the results
+print("Experiment Results: When Renovation Matters (Adjusted R^2)")
+print(experiment_results)
+
+```
+
+### Bullshit parts
+#### Sensivity Analysis for each Model
+
+```{r}
+# 1. Add interaction term (e.g., living area and number of bedrooms)
+mlr_interaction_model <- lm(price ~ bedrooms * living_in_m2 + nice_view + perfect_condition + quartile_zone, data = dataset_train)
+summary(mlr_interaction_model)
+
+# 2. Log transformation of the dependent variable (price)
+mlr_log_model <- lm(log(price) ~ bedrooms + living_in_m2 + nice_view + perfect_condition + quartile_zone, data = dataset_train)
+summary(mlr_log_model)
+
+# 3. Exclude control variable (e.g., remove `nice_view` variable)
+mlr_reduced_model <- lm(price ~ bedrooms + living_in_m2 + perfect_condition + quartile_zone, data = dataset_train)
+summary(mlr_reduced_model)
+```
+
+#### Detecting Confounding Variables
+
+```{r}
+
+## Step 1: Filter Numeric Columns
+numeric_columns <- dataset_train[, sapply(dataset_train, is.numeric)]
+
+## Step 2: Calculate the Correlation Matrix
+cor_matrix <- cor(numeric_columns, use = "complete.obs")
+
+## Step 3: Identify Confounding Variables
+# A confounder is correlated with both the target variable ('price') and other variables
+cor_target <- abs(cor_matrix["price", ])  # Correlation with the target variable
+confounders <- names(cor_target[cor_target > 0.2])  # Threshold > 0.2
+
+# Remove the target variable ('price') from the list of confounders
+confounders <- setdiff(confounders, "price")
+
+## Step 4: Print Confounding Variables
+print("Confounding Variables:")
+print(confounders)
+
+```
+
+```{r}
+# Install required packages
+if (!requireNamespace("bnlearn", quietly = TRUE)) {
+  install.packages("bnlearn")
+}
+if (!requireNamespace("Rgraphviz", quietly = TRUE)) {
+  BiocManager::install("Rgraphviz")
+}
+library(bnlearn)
+library(Rgraphviz)
+
+# Prepare the data
+# Ensure all columns are numeric or factors (bnlearn requires categorical/numeric data)
+dataset_for_dag <- dataset_train %>%
+  mutate(across(where(is.character), as.factor)) %>%
+  mutate(across(where(is.logical), as.factor))
+
+# Exclude the target variable (`price`) from confounders
+confounding_vars <- confounders  # Replace with your confounders
+dataset_dag <- dataset_for_dag[, c(confounding_vars, "price")]
+
+# Enforce `price` as a sink node
+# Create an empty blacklist of arcs
+arc_constraints <- data.frame(from = "price", to = setdiff(names(dataset_dag), "price"))
+
+# Learn the DAG structure using the Hill-Climbing Algorithm with constraints
+dag_model <- hc(dataset_dag, blacklist = arc_constraints)
+
+# Plot the DAG with `price` highlighted as a sink node
+graphviz.plot(dag_model, highlight = list(nodes = "price", fill = "lightblue"))
+
+
+```
+
+#### Categorize living_in_m2 into 10 bins
+
+```{r}
+
+## Create a new dataframe with categorized `living_in_m2`
+dataset_train_categorized <- dataset_train %>%
+  mutate(living_in_m2_category = ntile(living_in_m2, 10))  # Divide into 10 bins
+
+# View the new categorized column
+print(table(dataset_train_categorized$living_in_m2_category))
+
+## Fit the MLR Model with the new categorized dataset
+mlr_model_with_categories <- lm(price ~ bedrooms + grade + has_basement + living_in_m2_category +
+                                  renovated + nice_view + perfect_condition + 
+                                  real_bathrooms + has_lavatory + single_floor +
+                                  month + quartile_zone, data = dataset_train_categorized)
+
+# Summary of the MLR model
+summary(mlr_model_with_categories)
+
+```
+
+#### Evaluating models on the test dataset
+
+```{r}
+
+
+```
+
+#### Key Takeaways
+
+1.  **Best Model:** `mlr_model_all` performs the best overall, with:
+
+    -   Lowest MSE: **11,149,777,983**
+    -   Lowest RMSE: **105,592.5**
+    -   Highest R²: **0.7424**
+
+    This suggests that the full linear regression model with all features captures the relationships in the data most effectively.
+
+2.  **Ridge vs. Lasso:**
+
+    -   Ridge Regression (`mlr_model_ridge`) performs slightly better than Lasso (`mlr_model_lasso`) in terms of:
+        -   MSE: **13,433,303,602** (Ridge) vs. **13,705,406,102** (Lasso)
+        -   RMSE: **115,902.1** (Ridge) vs. **117,070.1** (Lasso)
+        -   R²: **0.6896** (Ridge) vs. **0.6833** (Lasso)
+    -   Neither, however, outperforms `mlr_model_all`.
+
+3.  **Fixed Effects Model:**
+
+    -   The Fixed Effects Model performs better than Ridge and Lasso but falls short compared to `mlr_model_all`:
+        -   MSE: **12,329,637,769**
+        -   RMSE: **111,038.9**
+        -   R²: **0.7151**
+
+4.  **Recommendations:**
+
+    -   Stick with `mlr_model_all` if computational cost is not an issue.
+    -   If feature selection or regularization is necessary, consider Ridge Regression (`mlr_model_ridge`) over Lasso.
+    -   Investigate potential **non-linear relationships** or **interaction effects** to improve the model further, as there may still be unexplained variance in the target variable.
+
+```{r}
+library(dagitty)
+library(ggdag)
+
+# Define the DAG
+lalonde_dag <- dagitty('
+dag {
+  bedroom -> grade
+  bedroom -> price
+  grade -> price
+  living_area -> price
+  bathroom -> price
+  single_floor -> price
+  zone -> price
+  living_area -> bedroom
+  bedroom -> bathroom
+  single_floor -> bedroom
+  living_area -> grade
+  bathroom -> grade
+  single_floor -> grade
+  zone -> grade
+  lavetory -> grade
+  single_floor -> basement
+  living_area -> bathroom
+  living_area -> lavetory
+  living_area -> single_floor 
+  single_floor -> bathroom
+  single_floor -> lavetory
+}
+')
+
+# Visualize the DAG with rectangular nodes
+ggdag(lalonde_dag, text = TRUE) +
+  theme_minimal() +
+  ggtitle("DAG Visualization") +
+  theme(
+    axis.line = element_blank(),
+    axis.ticks = element_blank(),
+    axis.text = element_blank(),
+    axis.title = element_blank(),
+    plot.title = element_text(color = "black", size = 17)
+  ) +
+  geom_dag_node( color = "white", fill = "white", size = 16) +
+  geom_dag_text(color = "black", size = 2) +
+  geom_dag_edges(edge_color = "black")
+```
