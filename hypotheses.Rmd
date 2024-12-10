@@ -190,6 +190,7 @@ if (!requireNamespace("MASS", quietly = TRUE)) install.packages("MASS")
 library(MASS)
 
 
+
 ```
 
 ```{r}
@@ -207,7 +208,7 @@ if (lambda_best == 0) {
 }
 
 # Refit the model with the transformed target variable
-mlr_model_transformed <- lm(price_transformed ~ living_in_m2 + bedrooms + grade + has_basement +
+mlr_model_transformed <- lm(price_scaled ~ living_in_m2 + bedrooms + grade + has_basement +
                               renovated + nice_view + perfect_condition + real_bathrooms +
                               has_lavatory + single_floor + factor(month) + factor(quartile_zone),
                             data = dataset_train)
@@ -215,14 +216,28 @@ mlr_model_transformed <- lm(price_transformed ~ living_in_m2 + bedrooms + grade 
 # Summary of the new model
 summary(mlr_model_transformed)
 
-hist(resid(mlr_model_transformed), breaks = 30, main = "Histogram of Residuals")
-qqnorm(resid(mlr_model_transformed))
-qqline(resid(mlr_model_transformed), col = "red")
+residuals <- resid(mlr_model_transformed)
+
+hist(residuals, breaks = 30, main = "Histogram of Residuals")
+qqnorm(residuals)
+qqline(residuals, col = "red")
 
 plot(fitted(mlr_model_transformed), resid(mlr_model_transformed),
      main = "Residuals vs Fitted", xlab = "Fitted Values", ylab = "Residuals")
 abline(h = 0, col = "red", lty = 2)
-
 ```
 
+## Check the multicolliearity
 
+```{r}
+library(car)  # For VIF function
+
+# Example: Fit a multiple linear regression model
+# Replace 'your_dataset' with your dataset name and specify your formula
+
+# Calculate Variance Inflation Factor (VIF)
+vif_values <- vif(mlr_model)
+
+# Display the VIF values
+print(vif_values)
+```
